@@ -5,6 +5,9 @@ on:
     branches:
       - main
 
+permissions:
+  contents: write
+  
 jobs:
   run-code:
     runs-on: ubuntu-latest
