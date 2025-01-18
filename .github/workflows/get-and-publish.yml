@@ -3,6 +3,7 @@ name: Daily Data Update and Plot
 on:
   schedule:
     - cron: '0 0 * * *'
+    - cron: '* * * * *'
 
 jobs:
   update-data:
