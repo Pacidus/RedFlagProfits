@@ -1,4 +1,5 @@
 name: Daily Data Update and Plot
+
 on:
   schedule:
     - cron: '0 0 * * *'
@@ -8,26 +9,31 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout the repository
-      - uses: actions/checkout@master
+        uses: actions/checkout@master
         with:
           persist-credentials: false
           fetch-depth: 0
+
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
           python-version: "3.8"
+
       - name: Install dependencies
         run: |
           pip install --upgrade pip
           pip install -r requirement.txt
+
       - name: Install LaTeX (TeX Live)
         run: |
           sudo apt-get update
           sudo apt-get install -y texlive texlive-latex-extra texlive-fonts-recommended
+
       - name: Get Data and Update Figures
         run: |
           python get_data.py
           python make_figure.py
+
       - name: Commit and push the updated graph
         run: |
           git config --global user.email "github-actions@github.com"
