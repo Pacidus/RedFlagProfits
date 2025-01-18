@@ -29,7 +29,8 @@ jobs:
 
       - name: Run code
         run: |
-          python your_script.py
+          python get_data.py
+          python make_figure.py
 
       - name: Configure Git
         run: |
