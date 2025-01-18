@@ -2,8 +2,7 @@ name: Daily Data Update and Plot
 
 on:
   schedule:
-    - cron: "0 0 * * *" # Runs once every day at midnight UTC
-
+    - cron: "0 0 * * *"
 jobs:
   update-data:
     runs-on: ubuntu-latest
@@ -44,5 +43,4 @@ jobs:
           git commit -m "Update graph"
           git push
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Automatically provided by GitHub
-
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
