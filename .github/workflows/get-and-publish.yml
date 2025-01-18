@@ -39,9 +39,5 @@ jobs:
           git add "Millionaires.svg"
           git commit -m "Update graph"
           git push
-<<<<<<< HEAD
-      env:
-=======
-        env: null
->>>>>>> cd79fa3 (work on workflow)
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
