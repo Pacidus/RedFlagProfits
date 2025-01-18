@@ -26,6 +26,11 @@ jobs:
         run: |
           python get_data.py
           python make_figure.py
+      
+      - name: Install LaTeX (TeX Live)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y texlive texlive-latex-extra texlive-fonts-recommended
 
       - name: Configure Git
         run: |
