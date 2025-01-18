@@ -12,6 +12,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v2
 
+      - name: Install necessary LaTeX packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y texlive-latex-base texlive-fonts-recommended texlive-fonts-extra texlive-latex-extra
+
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
@@ -22,15 +27,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Install LaTeX (TeX Live)
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y texlive texlive-latex-extra texlive-fonts-recommended
-
       - name: Run code
         run: |
-          python get_data.py
-          python make_figure.py
+          python your_script.py
 
       - name: Configure Git
         run: |
