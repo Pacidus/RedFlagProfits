@@ -1,48 +1,47 @@
-name: Daily Data Update and Plot
+name: Run Code and Push Changes
 
 on:
-  schedule:
-    - cron: '0 0 * * *'
-    - cron: '* * * * *'
+  push:
+    branches:
+      - main
 
 jobs:
-  update-data:
+  run-code:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout the repository
-        uses: actions/checkout@master
-        with:
-          persist-credentials: false
-          fetch-depth: 0
+      - name: Checkout repository
+        uses: actions/checkout@v2
 
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
-          python-version: "3.8"
+          python-version: 3.8
 
       - name: Install dependencies
         run: |
-          pip install --upgrade pip
-          pip install -r requirement.txt
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
-      - name: Install LaTeX (TeX Live)
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y texlive texlive-latex-extra texlive-fonts-recommended
-
-      - name: Get Data and Update Figures
+      - name: Run code
         run: |
           python get_data.py
           python make_figure.py
 
-      - name: Commit and push the updated graph
+      - name: Configure Git
         run: |
-          git config --global user.email "github-actions@github.com"
-          git config --global user.name "GitHub Actions"
-          git add "data/*"
-          git add "Billionaires.svg"
-          git add "Millionaires.svg"
-          git commit -m "Update graph"
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+      - name: Add changes
+        run: |
+          git add .
+
+      - name: Commit changes
+        run: |
+          git commit -m "Automated commit by GitHub Actions" || echo "No changes to commit"
+
+      - name: Push changes
+        run: |
           git push
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
