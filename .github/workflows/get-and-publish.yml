@@ -22,15 +22,15 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run code
-        run: |
-          python get_data.py
-          python make_figure.py
-      
       - name: Install LaTeX (TeX Live)
         run: |
           sudo apt-get update
           sudo apt-get install -y texlive texlive-latex-extra texlive-fonts-recommended
+
+      - name: Run code
+        run: |
+          python get_data.py
+          python make_figure.py
 
       - name: Configure Git
         run: |
