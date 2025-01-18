@@ -2,11 +2,8 @@
 name: Daily Data Update and Plot
 on:
   schedule:
-<<<<<<< HEAD
-    - cron: "0 0 * * *"
-=======
-    - cron: 0 0 * * *
->>>>>>> cd79fa3 (work on workflow)
+    - cron: '0 0 * * *'
+
 jobs:
   update-data:
     runs-on: ubuntu-latest
