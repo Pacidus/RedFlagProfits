@@ -37,7 +37,7 @@ jobs:
 
       - name: Update README with last update time
         run: |
-          sed -i '/^Last run:/c\Last run: $(date -u)' README.md
+          sed -i "/^Last run:/c\Last run: $(date -u)" README.md
 
       - name: Configure Git
         run: |
