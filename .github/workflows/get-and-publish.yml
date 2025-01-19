@@ -35,15 +35,9 @@ jobs:
           python get_data.py
           python make_figure.py
 
-      - name: Calculate next scheduled run time
-        id: next-run
+      - name: Update README with last update time
         run: |
-          next_run=$(date -u -d "24 hours" +'%Y-%m-%d %H:%M:%S')
-          echo "NEXT_RUN=$next_run" >> $GITHUB_ENV
-
-      - name: Update README with next scheduled run time
-        run: |
-          sed -i '/^Next scheduled run:/c\Next scheduled run: ${{ env.NEXT_RUN }} UTC' README.md
+          sed -i '/^Last run:/c\Last run: $(date -u)' README.md
 
       - name: Configure Git
         run: |
@@ -52,7 +46,7 @@ jobs:
 
       - name: Add changes
         run: |
-          git add README.md
+          git add .
 
       - name: Commit changes
         run: |
