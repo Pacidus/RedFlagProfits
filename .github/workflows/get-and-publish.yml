@@ -2,7 +2,7 @@ name: Run Code and Push Changes
 
 on:
   schedule:
-    - cron: '0 0 * * *'  # Runs at midnight UTC every day
+    - cron: '*/3 0 * * *'  # Runs at midnight UTC every day
 
 permissions:
   contents: write
