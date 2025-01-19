@@ -2,7 +2,8 @@ name: Run Code and Push Changes
 
 on:
   schedule:
-    - cron: '*/5 * * * *'  # Runs at midnight UTC every day
+    - cron: '0 0 * * *'  # Runs at midnight UTC every day
+  workflow_dispatch:
 
 permissions:
   contents: write
