@@ -46,4 +46,3 @@ Keys = [
 data = data[Keys]
 
 data.to_csv(f"data/{time}.csv", index=False)
-
