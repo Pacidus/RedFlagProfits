@@ -1,8 +1,9 @@
+import sys
 import numpy as np
 import polars as pl
 import matplotlib.pyplot as plt
+
 from glob import glob
-import sys
 
 def process_file_lazy(path, min_worth=0):
     """
@@ -15,7 +16,7 @@ def process_file_lazy(path, min_worth=0):
     Returns:
     - A dictionary containing the aggregated values
     """
-    df = pl.scan_csv(
+    totals = pl.scan_csv(
         path,
         schema_overrides={
             "finalWorth": pl.Float64,
@@ -23,13 +24,12 @@ def process_file_lazy(path, min_worth=0):
             "archivedWorth": pl.Float64,
             "privateAssetsWorth": pl.Float64,
         },
-    )
-    df_filtered = df.filter(
+    ).filter(
         (pl.col("finalWorth") >= min_worth)
         & (pl.col("estWorthPrev") >= min_worth)
+        & (pl.col("archivedWorth") >= min_worth)
         & (pl.col("privateAssetsWorth") >= min_worth)
-    )
-    totals = df_filtered.select([
+    ).select([
         pl.len().alias("N_Bi"),
         pl.sum("finalWorth").alias("totF") / 1e3,
         pl.sum("estWorthPrev").alias("totB") / 1e3,
@@ -137,29 +137,18 @@ def main(min_worth, group_label, group_desc, show):
     sorted_indices = np.argsort(date)
     date = date[sorted_indices]
 
-    for i, path in enumerate(files):
-        totals = process_file_lazy(path, min_worth)
-        N_Bi[i], totF[i], totB[i], totA[i], totP[i] = (
-            totals["N_Bi"].item(),
-            totals["totF"].item(),
-            totals["totB"].item(),
-            totals["totA"].item(),
-            totals["totP"].item(),
-        )
-
-    N_Bi, totF, totB, totA, totP = (
-        N_Bi[sorted_indices],
-        totF[sorted_indices],
-        totB[sorted_indices],
-        totA[sorted_indices],
-        totP[sorted_indices],
-    )
+    for i, j in enumerate(sorted_indices):
+        totals = process_file_lazy(files[j], min_worth)
+        N_Bi[i] = totals["N_Bi"].item()
+        totF[i] = totals["totF"].item()
+        totB[i] = totals["totB"].item()
+        totA[i] = totals["totA"].item()
+        totP[i] = totals["totP"].item()
 
     plot_data(date, totA, totF, totB, totP, N_Bi, group_label, group_desc, show)
 
 if __name__ == "__main__":
     show_plot = len(sys.argv) > 1 and sys.argv[1] == "show"
 
-    main(min_worth=1000, group_label="Billionaires", group_desc="Billionaires ($\\ge$ 1B)", show=show_plot)
-    main(min_worth=1, group_label="Millionaires", group_desc="Millionaires ($\\ge$ 1M)", show=show_plot)
-
+    main(min_worth=1000, group_label="Billionaires", group_desc=r"Billionaires ($\ge$ 1B)", show=show_plot)
+    main(min_worth=1, group_label="Millionaires", group_desc=r"Millionaires ($\ge$ 1M)", show=show_plot)
