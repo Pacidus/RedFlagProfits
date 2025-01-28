@@ -137,19 +137,21 @@ def plot_data(date, totA, totF, totB, totP, N_Bi, group_label, group_desc, show=
 
     if show:
         plt.show()
-    
+
+
     # Create Plotly figure with adjusted subplot structure
     plotly_fig = make_subplots(
-        rows=2,
+        rows=3,
         cols=2,
         specs=[
-            [{"rowspan": 2}, {}],  # Main plot spans both rows
-            [None, {}]             # Right column has two sparklines
-        ],
-        column_widths=[0.7, 0.3],  # 70% width for main plot, 30% for right column
-        row_heights=[0.7, 0.3],    # 70% height for main plot row, 30% for sparkline row
-        vertical_spacing=0.02,
-        horizontal_spacing=0.05
+            [{"rowspan": 3}, {}],
+            [None, {}],
+            [None, {}]
+        ],  
+        column_widths=[.765, .235],  # More space for right column
+        row_heights=[.65, .17,.17],      # Adjust row heights
+        vertical_spacing=0.08,
+        horizontal_spacing=0.08
     )
 
     colors = ["#708090", "#b0c4de", "#3cb371", "#9932cc"]
@@ -158,8 +160,6 @@ def plot_data(date, totA, totF, totB, totP, N_Bi, group_label, group_desc, show=
 
     for data, color, label in zip(datasets, colors, labels):
         x_date, fitted_data, doubling_time = fit_trendline(date.astype('datetime64[D]').astype('float'), data)
-
-        # Convert labels for Plotly compatibility
         converted_label = convert_to_plotly_latex(label)
         trend_label = convert_to_plotly_latex(f"{label} Trend: {doubling_time:.1f} yrs")
 
@@ -173,7 +173,7 @@ def plot_data(date, totA, totF, totB, totP, N_Bi, group_label, group_desc, show=
             legendgroup=converted_label
         ), row=1, col=1)
 
-        # Trendline with doubling time in name
+        # Trendline
         plotly_fig.add_trace(go.Scatter(
             x=x_date.astype('datetime64[D]'),
             y=fitted_data,
@@ -185,59 +185,54 @@ def plot_data(date, totA, totF, totB, totP, N_Bi, group_label, group_desc, show=
             showlegend=True
         ), row=1, col=1)
 
-    # Add sparklines to the right column
-    # First sparkline (N_Bi) in top right (row=1, col=2)
+    # Add sparklines to right column
+    # Top right sparkline (N_Bi)
     plotly_fig.add_trace(go.Scatter(
         x=date, y=N_Bi,
         mode='lines',
         line=dict(color='white', width=2),
         showlegend=False,
         hoverinfo='skip'
-    ), row=1, col=2)
+    ), row=2, col=2)
 
-    # Second sparkline (Mean Worth) in bottom right (row=2, col=2)
+    # Bottom right sparkline (Mean Worth)
     plotly_fig.add_trace(go.Scatter(
         x=date, y=totF/N_Bi,
         mode='lines',
         line=dict(color='white', width=2),
         showlegend=False,
         hoverinfo='skip'
-    ), row=2, col=2)
+    ), row=3, col=2)
 
-    # Convert all text elements to LaTeX format
+    # Convert text elements
     converted_group_label = convert_to_plotly_latex(group_label)
     plotly_group_desc = convert_to_plotly_latex(f"The Increasing Concentration of Wealth: {group_desc}")
 
-    # Update axes for sparklines
-    plotly_fig.update_xaxes(
-        showticklabels=False, 
-        row=1, col=2,
-        range=[date.min(), date.max()]  # Match x-axis range with main plot
-    )
-    plotly_fig.update_xaxes(
-        showticklabels=False, 
-        row=2, col=2,
-        range=[date.min(), date.max()]
-    )
+    # Update sparkline axes
+    for row in [2, 3]:
+        plotly_fig.update_xaxes(
+            showticklabels=False,
+            row=row, col=2,
+            range=[date.min(), date.max()]
+        )
+        plotly_fig.update_yaxes(
+            showgrid=False,
+            tickfont=dict(family="serif", size=10),
+            row=row, col=2
+        )
 
     plotly_fig.update_yaxes(
         title_text=converted_group_label,
-        row=1,
-        col=2,
-        title_font=dict(size=12),
-        showgrid=False,
-        tickfont=dict(family="serif")
+        row=2, col=2,
+        title_font=dict(size=12)
     )
     plotly_fig.update_yaxes(
         title_text=convert_to_plotly_latex("Mean Worth"),
-        row=2,
-        col=2,
-        title_font=dict(size=12),
-        showgrid=False,
-        tickfont=dict(family="serif")
+        row=3, col=2,
+        title_font=dict(size=12)
     )
-    
-    # Layout adjustments with converted text and font settings
+
+    # Layout adjustments
     plotly_fig.update_layout(
         template='plotly_dark',
         font=dict(family="serif", size=12),
@@ -248,12 +243,13 @@ def plot_data(date, totA, totF, totB, totP, N_Bi, group_label, group_desc, show=
             y=0.95
         ),
         legend=dict(
-            x=1.25,  # Move legend further right
-            y=0.95,  # Position above sparklines
+            x=0.8,  # Positioned right of main plot
+            y=0.95,  # Aligned with top of sparklines
             bgcolor='rgba(0,0,0,0)',
-            font=dict(size=12)
+            font=dict(size=12),
+            xanchor='left'
         ),
-        margin=dict(l=80, r=250, t=80, b=80),  # Increase right margin
+        margin=dict(l=80, r=80, t=80, b=80),  # Increased right margin
         xaxis=dict(
             tickangle=-30,
             tickfont=dict(size=12, family="serif"),
@@ -265,7 +261,7 @@ def plot_data(date, totA, totF, totB, totP, N_Bi, group_label, group_desc, show=
         ),
         hovermode='x unified',
         height=600,
-        width=1200,
+        width=1400,  # Wider to accommodate elements
     )
 
     plotly_fig.write_html(f"{group_label}.html", include_plotlyjs='cdn', include_mathjax='cdn')
