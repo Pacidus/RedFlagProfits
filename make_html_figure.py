@@ -103,7 +103,6 @@ def calculate_trendline(dates, values):
 # --------------------------
 # Plotting Functions
 # --------------------------
-
 def plot_wealth_trends(dates, archived, final, begin, private, individual_count, 
                       group_label, group_desc, show=True):
     """Generate dual-format visualizations (Matplotlib SVG + Plotly HTML) for wealth trends.
@@ -119,19 +118,33 @@ def plot_wealth_trends(dates, archived, final, begin, private, individual_count,
         group_desc: Descriptive title for plots
         show: Whether to display Matplotlib plot interactively
     """
-    # Configure matplotlib style
+    # --------------------------
+    # Common Parameters
+    # --------------------------
+    data_labels = ["Archived Worth", "Final Worth", "Begin Worth", "Private Assets"]
+    colors = ["slategray", "lightsteelblue", "mediumseagreen", "darkorchid"]
+    title_base = "The Increasing Concentration of Wealth: "
+    font_family = "serif"
+    
+    # Consistent aspect ratio parameters (10:6 proportion)
+    fig_width = 10
+    fig_height = 6
+    plotly_width = 1400
+    plotly_height = int(plotly_width * (fig_height / fig_width))  # 1400 * 0.6 = 840
+
+    # --------------------------
+    # Matplotlib Configuration
+    # --------------------------
     plt.rc("text", usetex=True)
-    plt.rc("font", family="serif")
+    plt.rc("font", family=font_family)
     plt.style.use("dark_background")
 
-    # Create base figure and axes
-    fig, main_ax = plt.subplots(figsize=(10, 6))
-    colors = ["slategray", "lightsteelblue", "mediumseagreen", "darkorchid"]
-    labels = ["Archived Worth", "Final Worth", "Begin Worth", "Private Assets"]
+    # Create base figure with consistent aspect ratio
+    fig, main_ax = plt.subplots(figsize=(fig_width, fig_height))
     wealth_data = [archived, final, begin, private]
 
     # Plot data points and trendlines
-    for data, color, label in zip(wealth_data, colors, labels):
+    for data, color, label in zip(wealth_data, colors, data_labels):
         # Raw data points
         main_ax.plot(dates, data, label=label, color=color, marker=".", linestyle="None")
         
@@ -153,7 +166,7 @@ def plot_wealth_trends(dates, archived, final, begin, private, individual_count,
     main_ax.tick_params(axis="x", labelrotation=30, labelsize=10, color="white")
     main_ax.tick_params(axis="y", labelsize=10, color="white")
     main_ax.grid(True, linestyle="--", color="gray", alpha=0.5)
-    main_ax.set_title(f"The Increasing Concentration of Wealth: {group_desc}", fontsize=16, color="white")
+    main_ax.set_title(f"{title_base}{group_desc}", fontsize=16, color="white")
     main_ax.legend(
         bbox_to_anchor=(1.05, 1), 
         borderaxespad=0., 
@@ -180,7 +193,9 @@ def plot_wealth_trends(dates, archived, final, begin, private, individual_count,
     if show:
         plt.show()
 
-    # Create Plotly interactive figure
+    # --------------------------
+    # Plotly Configuration
+    # --------------------------
     plotly_fig = make_subplots(
         rows=3,
         cols=2,
@@ -190,14 +205,9 @@ def plot_wealth_trends(dates, archived, final, begin, private, individual_count,
         vertical_spacing=0.08,
         horizontal_spacing=0.08
     )
-
-    # Plotly color scheme and data configuration
-    plotly_colors = ["#708090", "#b0c4de", "#3cb371", "#9932cc"]
-    labels = ["Archived Worth", "Final Worth", "Begin Worth", "Private Assets"]
-    wealth_data = [archived, final, begin, private]
-
+    
     # Add main traces and trendlines
-    for data, color, label in zip(wealth_data, plotly_colors, labels):
+    for data, color, label in zip(wealth_data, colors, data_labels):
         trend_dates, trend_values, doubling = calculate_trendline(dates.astype('datetime64[D]').astype('float'), data)
         plotly_label = convert_latex_for_plotly(label)
         trend_label = convert_latex_for_plotly(f"{label} Trend: {doubling:.1f} yrs")
@@ -242,11 +252,11 @@ def plot_wealth_trends(dates, archived, final, begin, private, individual_count,
     ), row=3, col=2)
 
     # Configure plotly layout
-    plotly_title = convert_latex_for_plotly(f"The Increasing Concentration of Wealth: {group_desc}")
+    plotly_title = convert_latex_for_plotly(f"{title_base}{group_desc}")
 
     plotly_fig.update_layout(
         template='plotly_dark',
-        font=dict(family="serif", size=12),
+        font=dict(family=font_family, size=12),
         title=dict(
             text=plotly_title,
             x=0.05,
@@ -263,21 +273,20 @@ def plot_wealth_trends(dates, archived, final, begin, private, individual_count,
         margin=dict(l=80, r=80, t=80, b=80),
         xaxis=dict(
             tickangle=-30,
-            tickfont=dict(size=12, family="serif"),
+            tickfont=dict(size=12, family=font_family),
             title=dict(text=convert_latex_for_plotly('Date'), font=dict(size=14))
         ),
         yaxis=dict(
             title=dict(text=convert_latex_for_plotly('Billions of Dollars'), font=dict(size=14)),
-            tickfont=dict(size=12, family="serif")
+            tickfont=dict(size=12, family=font_family)
         ),
         hovermode='x unified',
-        height=600,
-        width=1400,
+        height=plotly_height,
+        width=plotly_width,
     )
 
     # Save plotly figure
     plotly_fig.write_html(f"{group_label}.html", include_plotlyjs='cdn', include_mathjax='cdn')
-
 # --------------------------
 # Main Execution
 # --------------------------
