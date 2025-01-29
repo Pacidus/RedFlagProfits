@@ -129,8 +129,8 @@ def plot_wealth_trends(dates, archived, final, begin, private, individual_count,
     # Consistent aspect ratio parameters (10:6 proportion)
     fig_width = 10
     fig_height = 6
-    plotly_width = 1400
-    plotly_height = int(plotly_width * (fig_height / fig_width))  # 1400 * 0.6 = 840
+    plotly_width = 1000
+    plotly_height = int(plotly_width * (fig_height / fig_width))  # 1000 * 0.6 = 600
 
     # --------------------------
     # Matplotlib Configuration
