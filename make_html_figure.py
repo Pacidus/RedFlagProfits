@@ -3,6 +3,7 @@ import numpy as np
 import polars as pl
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
+
 from glob import glob
 from plotly.subplots import make_subplots
 
@@ -105,188 +106,234 @@ def calculate_trendline(dates, values):
 # --------------------------
 def plot_wealth_trends(dates, archived, final, begin, private, individual_count, 
                       group_label, group_desc, show=True):
-    """Generate dual-format visualizations (Matplotlib SVG + Plotly HTML) for wealth trends.
-    
-    Args:
-        dates: Array of dates for x-axis
-        archived: Archived worth data series
-        final: Final worth data series
-        begin: Begin worth data series
-        private: Private assets data series
-        individual_count: Number of individuals in group
-        group_label: Short identifier for output filenames
-        group_desc: Descriptive title for plots
-        show: Whether to display Matplotlib plot interactively
-    """
-    # --------------------------
-    # Common Parameters
-    # --------------------------
+    """Generate dual-format visualizations (Matplotlib SVG + Plotly HTML) for wealth trends."""
+    # =======================================================================
+    # Common Parameters for Both Visualizations
+    # =======================================================================
+    # Data series configuration
     data_labels = ["Archived Worth", "Final Worth", "Begin Worth", "Private Assets"]
     colors = ["slategray", "lightsteelblue", "mediumseagreen", "darkorchid"]
-    title_base = "The Increasing Concentration of Wealth: "
-    font_family = "serif"
-    
-    # Consistent aspect ratio parameters (10:6 proportion)
-    fig_width = 10
-    fig_height = 6
-    plotly_width = 1000
-    plotly_height = int(plotly_width * (fig_height / fig_width))  # 1000 * 0.6 = 600
-
-    # --------------------------
-    # Matplotlib Configuration
-    # --------------------------
-    plt.rc("text", usetex=True)
-    plt.rc("font", family=font_family)
-    plt.style.use("dark_background")
-
-    # Create base figure with consistent aspect ratio
-    fig, main_ax = plt.subplots(figsize=(fig_width, fig_height))
     wealth_data = [archived, final, begin, private]
-
-    # Plot data points and trendlines
-    for data, color, label in zip(wealth_data, colors, data_labels):
-        # Raw data points
-        main_ax.plot(dates, data, label=label, color=color, marker=".", linestyle="None")
+    
+    # Unified styling parameters with library-specific adjustments
+    unified_params = {
+        # Font styling
+        'title_font_size': 16,
+        'axis_label_font_size': 12,
+        'tick_font_size': 10,
+        'legend_font_size': 10,
+        'font_family': "serif",
         
-        # Trendline calculation and plotting
+        # Layout dimensions
+        'base_width': 10,
+        'base_height': 6,
+        'main_plot_right': 0.7,
+        'legend_anchor': (1.05, 1),
+        'sparkline_inset': [0.765, 0.29, 0.23, 0.17],
+        
+        # Grid styling (library-specific values)
+        'grid_color': 'rgba(128, 128, 128, 0.5)',
+        'matplotlib_grid_style': '--',         # Matplotlib linestyle
+        'plotly_grid_dash': 'dash',            # Plotly dash pattern
+        'grid_alpha': 0.5,
+        
+        # Line styles (library-specific values)
+        'matplotlib_trend_style': '--',        # Matplotlib dashed line
+        'plotly_trend_dash': 'dash',           # Plotly dash pattern
+        'trend_linewidth': 1,
+        
+        # Axis parameters
+        'x_tick_rotation': -30,
+        'y_axis_label': "Billions of Dollars",
+        'sparkline_labels': ["Group Size", "Mean Worth"]
+    }
+
+    # =======================================================================
+    # Matplotlib SVG Output
+    # =======================================================================
+    # Initialize figure and axes
+    plt.rc("text", usetex=True)
+    plt.rc("font", family=unified_params['font_family'])
+    plt.style.use("dark_background")
+    fig, main_ax = plt.subplots(figsize=(unified_params['base_width'], unified_params['base_height']))
+
+    # Main plot components
+    for data, color, label in zip(wealth_data, colors, data_labels):
+        main_ax.plot(dates, data, label=label, color=color, marker=".", linestyle="None")
         trend_dates, trend_values, doubling = calculate_trendline(dates, data)
-        main_ax.plot(
-            trend_dates,
-            trend_values,
-            color=color,
-            linestyle="--",
-            linewidth=1,
-            alpha=0.4,
-            label=f"{label} Trend:\nDoubling Time = {doubling:.2f} years",
-        )
+        main_ax.plot(trend_dates, trend_values, color=color, 
+                    linestyle=unified_params['matplotlib_trend_style'],
+                    linewidth=unified_params['trend_linewidth'], 
+                    alpha=0.4,
+                    label=f"{label} Trend:\nDoubling Time = {doubling:.2f} years")
 
-    # Configure main plot appearance
-    main_ax.set_ylabel("Billions of Dollars", fontsize=12, color="white")
-    main_ax.set_xlabel("Date", fontsize=12, color="white")
-    main_ax.tick_params(axis="x", labelrotation=30, labelsize=10, color="white")
-    main_ax.tick_params(axis="y", labelsize=10, color="white")
-    main_ax.grid(True, linestyle="--", color="gray", alpha=0.5)
-    main_ax.set_title(f"{title_base}{group_desc}", fontsize=16, color="white")
-    main_ax.legend(
-        bbox_to_anchor=(1.05, 1), 
-        borderaxespad=0., 
-        fontsize=10, 
-        handletextpad=2, 
-        labelspacing=1.5, 
-        borderpad=1
-    )
+    # Axis configuration
+    main_ax.set_ylabel(unified_params['y_axis_label'], 
+                      fontsize=unified_params['axis_label_font_size'], 
+                      color="white")
+    main_ax.set_xlabel("Date", 
+                      fontsize=unified_params['axis_label_font_size'], 
+                      color="white")
+    main_ax.tick_params(axis="x", 
+                       labelrotation=unified_params['x_tick_rotation'], 
+                       labelsize=unified_params['tick_font_size'], 
+                       color="white")
+    main_ax.tick_params(axis="y", 
+                       labelsize=unified_params['tick_font_size'], 
+                       color="white")
+    main_ax.grid(True, 
+                linestyle=unified_params['matplotlib_grid_style'], 
+                color="gray", 
+                alpha=unified_params['grid_alpha'])
+    main_ax.set_title(f"The Increasing Concentration of Wealth: {group_desc}", 
+                     fontsize=unified_params['title_font_size'], 
+                     color="white")
+    main_ax.legend(bbox_to_anchor=unified_params['legend_anchor'], 
+                  borderaxespad=0.,
+                  fontsize=unified_params['legend_font_size'])
 
-    # Add right-side sparklines
-    for idx, (data, ylabel) in enumerate(zip([individual_count, final / individual_count], 
-                                           [group_label, "Mean Worth"])):
-        spark_ax = fig.add_axes([0.765, 0.27 - idx * 0.17, 0.23, 0.1])
+    # Sparkline panels
+    for idx, (data, ylabel) in enumerate(zip([individual_count, final/individual_count], 
+                                           unified_params['sparkline_labels'])):
+        spark_ax = fig.add_axes([
+            unified_params['sparkline_inset'][0],
+            unified_params['sparkline_inset'][1] - idx * unified_params['sparkline_inset'][3],
+            unified_params['sparkline_inset'][2],
+            unified_params['sparkline_inset'][3]
+        ])
         spark_ax.plot(dates, data, color="white", linewidth=1.5, alpha=0.7)
         spark_ax.set_xticks([])
-        spark_ax.grid(color="gray", linestyle="--", axis="y", alpha=0.7)
+        spark_ax.grid(color="gray", 
+                     linestyle=unified_params['matplotlib_grid_style'], 
+                     axis="y", 
+                     alpha=0.7)
         spark_ax.set_facecolor("none")
-        spark_ax.set_ylabel(ylabel, fontsize=12, color="white")
+        spark_ax.set_ylabel(ylabel, 
+                           fontsize=unified_params['axis_label_font_size'], 
+                           color="white")
         spark_ax.spines[:].set_visible(False)
 
-    # Finalize and save matplotlib figure
-    fig.subplots_adjust(left=0.075, right=0.7, bottom=0.12, top=0.945)
+    fig.subplots_adjust(left=0.075, 
+                       right=unified_params['main_plot_right'], 
+                       bottom=0.12, 
+                       top=0.945)
     fig.savefig(f"{group_label}.svg")
-    if show:
+    if show: 
         plt.show()
 
-    # --------------------------
-    # Plotly Configuration
-    # --------------------------
+    # =======================================================================
+    # Plotly HTML Output
+    # =======================================================================
+    # Calculate proportional dimensions
+    plotly_width = 1000
+    plotly_height = int(plotly_width * (unified_params['base_height']/unified_params['base_width'] ))
+    plotly_col_widths = [
+        1 - unified_params['sparkline_inset'][2],
+        unified_params['sparkline_inset'][2]
+    ]
+    plotly_row_heights = [
+        1 - 2 * unified_params['sparkline_inset'][3],
+        unified_params['sparkline_inset'][3],
+        unified_params['sparkline_inset'][3]
+    ]
+
     plotly_fig = make_subplots(
-        rows=3,
-        cols=2,
+        rows=3, cols=2,
         specs=[[{"rowspan": 3}, {}], [None, {}], [None, {}]],
-        column_widths=[0.765, 0.235],
-        row_heights=[0.65, 0.17, 0.17],
-        vertical_spacing=0.08,
-        horizontal_spacing=0.08
+        column_widths=plotly_col_widths,
+        row_heights=plotly_row_heights,
+        vertical_spacing=0.04,
+        horizontal_spacing=0.04
     )
-    
-    # Add main traces and trendlines
+
+    # Main plot traces
     for data, color, label in zip(wealth_data, colors, data_labels):
         trend_dates, trend_values, doubling = calculate_trendline(dates.astype('datetime64[D]').astype('float'), data)
         plotly_label = convert_latex_for_plotly(label)
         trend_label = convert_latex_for_plotly(f"{label} Trend: {doubling:.1f} yrs")
 
-        # Data points
         plotly_fig.add_trace(go.Scatter(
-            x=dates, y=data,
-            mode='markers',
-            name=plotly_label,
-            marker=dict(color=color, size=8),
-            hovertemplate="%{x|%Y-%m-%d}<br><b>%{y:.1f}B</b><extra></extra>",
+            x=dates, y=data, mode='markers', name=plotly_label,
+            marker=dict(color=color, size=8), 
+            hovertemplate="%{x|%Y-%m-%d}<br><b>%{y:.1f}B</b>",
             legendgroup=plotly_label
         ), row=1, col=1)
 
-        # Trendline
         plotly_fig.add_trace(go.Scatter(
-            x=trend_dates.astype('datetime64[D]'),
-            y=trend_values,
+            x=trend_dates.astype('datetime64[D]'), 
+            y=trend_values, 
             mode='lines',
-            line=dict(color=color, dash='dash', width=2),
+            line=dict(color=color, 
+                     dash=unified_params['plotly_trend_dash'], 
+                     width=unified_params['trend_linewidth']+1),
             name=trend_label,
-            hoverinfo='skip',
-            legendgroup=plotly_label,
-            showlegend=True
+            hoverinfo='skip', 
+            legendgroup=plotly_label
         ), row=1, col=1)
 
-    # Add sparkline traces
+    # Sparkline traces
     plotly_fig.add_trace(go.Scatter(
-        x=dates, y=individual_count,
-        mode='lines',
-        line=dict(color='white', width=2),
-        showlegend=False,
+        x=dates, y=individual_count, mode='lines',
+        line=dict(color='white', width=2), 
+        showlegend=False, 
         hoverinfo='skip'
     ), row=2, col=2)
 
     plotly_fig.add_trace(go.Scatter(
-        x=dates, y=final/individual_count,
-        mode='lines',
-        line=dict(color='white', width=2),
-        showlegend=False,
+        x=dates, y=final/individual_count, mode='lines',
+        line=dict(color='white', width=2), 
+        showlegend=False, 
         hoverinfo='skip'
     ), row=3, col=2)
 
-    # Configure plotly layout
-    plotly_title = convert_latex_for_plotly(f"{title_base}{group_desc}")
-
+    # Unified layout configuration
     plotly_fig.update_layout(
         template='plotly_dark',
-        font=dict(family=font_family, size=12),
         title=dict(
-            text=plotly_title,
+            text=convert_latex_for_plotly(f"The Increasing Concentration of Wealth: {group_desc}"),
             x=0.05,
-            font=dict(size=24),
+            font=dict(size=unified_params['title_font_size']),
             y=0.95
         ),
         legend=dict(
-            x=0.8,
-            y=0.95,
+            x=unified_params['main_plot_right'] + 0.1,
+            y=.95,
+            xanchor='left',
             bgcolor='rgba(0,0,0,0)',
-            font=dict(size=12),
-            xanchor='left'
+            font=dict(size=unified_params['legend_font_size'])
         ),
-        margin=dict(l=80, r=80, t=80, b=80),
+        margin=dict(
+            l=int(plotly_width * 0.075),
+            r=int(plotly_width * 0.075),
+            t=int(plotly_height * 0.055),
+            b=int(plotly_height * 0.12)
+        ),
         xaxis=dict(
-            tickangle=-30,
-            tickfont=dict(size=12, family=font_family),
-            title=dict(text=convert_latex_for_plotly('Date'), font=dict(size=14))
+            tickangle=unified_params['x_tick_rotation'],
+            gridcolor=unified_params['grid_color'],
+            griddash=unified_params['plotly_grid_dash'],
+            title=dict(text=convert_latex_for_plotly('Date'), 
+                      font=dict(size=unified_params['axis_label_font_size'])),
+            tickfont=dict(size=unified_params['tick_font_size'])
         ),
         yaxis=dict(
-            title=dict(text=convert_latex_for_plotly('Billions of Dollars'), font=dict(size=14)),
-            tickfont=dict(size=12, family=font_family)
+            title=dict(text=convert_latex_for_plotly(unified_params['y_axis_label']), 
+                      font=dict(size=unified_params['axis_label_font_size'])),
+            gridcolor=unified_params['grid_color'],
+            griddash=unified_params['plotly_grid_dash'],
+            tickfont=dict(size=unified_params['tick_font_size'])
         ),
         hovermode='x unified',
         height=plotly_height,
         width=plotly_width,
+        font=dict(
+            family=unified_params['font_family'],
+            size=unified_params['tick_font_size']
+        )
     )
 
-    # Save plotly figure
     plotly_fig.write_html(f"{group_label}.html", include_plotlyjs='cdn', include_mathjax='cdn')
+
 # --------------------------
 # Main Execution
 # --------------------------
