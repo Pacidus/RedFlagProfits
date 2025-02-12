@@ -86,7 +86,6 @@ def main(min_worth, group_label, group_desc, show):
         trend_data,
         group_label,
         group_desc,
-        show,
     )
 
 
