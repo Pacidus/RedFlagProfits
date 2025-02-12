@@ -124,7 +124,7 @@
             <div class="figure-grid">
                 <!-- Millionaires Visualization -->
                 <div class="figure-container">
-    		    <div id="millionaires-container" class="figure-content"></div>
+                    <iframe src="https://pacidus.github.io/RedFlagProfits/figures/Millionaires.html"></iframe>
                     <div class="description">
                         <h3>Millionaires Wealth Accumulation</h3>
                         <p>Tracking the exponential growth of wealth concentration among top millionaires since 1990. Adjusted for inflation and population growth.</p>
@@ -132,9 +132,9 @@
                 </div>
 
                 <!-- Billionaires Visualization -->
-                <div class="figure-container">    
-    		    <div id="billionaires-container" class="figure-content"></div>
-		    <div class="description">
+                <div class="figure-container">
+                    <iframe src="https://pacidus.github.io/RedFlagProfits/figures/Billionaires.html"></iframe>
+                    <div class="description">
                         <h3>Billionaires Wealth Supremacy</h3>
                         <p>Visualizing the accelerating wealth accumulation patterns among the global billionaire class compared to overall economic growth.</p>
                     </div>
@@ -147,28 +147,5 @@
             <p>Methodology details available on <a href="https://github.com/Pacidus/RedFlagProfits" target="_blank">GitHub repository</a></p>
         </footer>
     </div>
-<script>
-// Add this before closing </body>
-document.addEventListener('DOMContentLoaded', function() {
-    const loadFigure = (url, containerId) => {
-        fetch(url)
-            .then(response => response.text())
-            .then(html => {
-                document.getElementById(containerId).innerHTML = html;
-            })
-            .catch(err => console.warn('Something went wrong.', err));
-    }
-
-    // Load figures
-    loadFigure(
-        'https://raw.githubusercontent.com/Pacidus/RedFlagProfits/dev/figures/Millionaires.html',
-        'millionaires-container'
-    );
-    loadFigure(
-        'https://raw.githubusercontent.com/Pacidus/RedFlagProfits/dev/figures/Billionaires.html',
-        'billionaires-container'
-    );
-});
-</script>
 </body>
 </html>
