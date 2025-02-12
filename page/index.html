@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RedFlagProfits: Wealth Concentration Visualization</title>
+    <link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;700&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #000;
+            color: #fff;
+            font-family: 'Roboto', sans-serif;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            text-align: center;
+            padding: 2rem 0;
+            border-bottom: 1px solid #333;
+            margin-bottom: 2rem;
+        }
+
+        h1, h2 {
+            font-family: 'Lora', serif;
+            font-weight: 700;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            color: #e74c3c;
+            margin-bottom: 0.5rem;
+        }
+
+        h2 {
+            color: #ecf0f1;
+            margin-bottom: 2rem;
+        }
+
+        .figure-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+
+        .figure-container {
+            background-color: #111;
+            padding: 1rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .figure-container iframe {
+            width: 100%;
+            height: 500px;
+            border: none;
+            background-color: #000;
+        }
+
+        .description {
+            padding: 1rem;
+            margin-top: 1rem;
+            background-color: #1a1a1a;
+            border-radius: 4px;
+        }
+
+        footer {
+            text-align: center;
+            padding: 2rem;
+            border-top: 1px solid #333;
+            margin-top: 2rem;
+            font-size: 0.9rem;
+            color: #888;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .figure-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .figure-container iframe {
+                height: 400px;
+            }
+        }
+
+        a {
+            color: #e74c3c;
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>RedFlagProfits</h1>
+            <h2>Wealth Concentration Visualization</h2>
+        </header>
+
+        <main>
+            <div class="figure-grid">
+                <!-- Millionaires Visualization -->
+                <div class="figure-container">
+                    <iframe src="https://raw.githubusercontent.com/Pacidus/RedFlagProfits/refs/heads/main/figures/Millionaires.html"></iframe>
+                    <div class="description">
+                        <h3>Millionaires Wealth Accumulation</h3>
+                        <p>Tracking the exponential growth of wealth concentration among top millionaires since 1990. Adjusted for inflation and population growth.</p>
+                    </div>
+                </div>
+
+                <!-- Billionaires Visualization -->
+                <div class="figure-container">
+                    <iframe src="https://raw.githubusercontent.com/Pacidus/RedFlagProfits/refs/heads/main/figures/Billionaires.html"></iframe>
+                    <div class="description">
+                        <h3>Billionaires Wealth Supremacy</h3>
+                        <p>Visualizing the accelerating wealth accumulation patterns among the global billionaire class compared to overall economic growth.</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <p>Research project by RedFlagProfits | Data source: Forbes Wealth Index & World Bank | License: CC BY-SA 4.0</p>
+            <p>Methodology details available on <a href="https://github.com/Pacidus/RedFlagProfits" target="_blank">GitHub repository</a></p>
+        </footer>
+    </div>
+</body>
+</html>
