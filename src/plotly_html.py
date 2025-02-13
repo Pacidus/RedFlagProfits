@@ -68,7 +68,7 @@ def add_main_data_traces(fig, dates, wealth_data, trend_data):
         # Unpack trend information
         trend_dates, trend_values, doubling_time = trend_data[idx]
         formatted_label = convert_latex_for_plotly(label)
-        trend_label = convert_latex_for_plotly(f"{label} Trend: {doubling_time:.1f} yrs")
+        trend_label = convert_latex_for_plotly(f"{label} Trend: $\\\\$ Doubling Time $= {doubling_time:.1f}$ yrs")
 
         # Add data points
         fig.add_trace(

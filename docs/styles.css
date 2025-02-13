@@ -1,0 +1,82 @@
+:root {
+    --bg-color: #1a1a1a;
+    --text-color: #e0e0e0;
+    --accent-color: #2a9d8f;
+    --muted-color: #666;
+}
+
+body {
+    font-family: 'Lato', sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    margin: 0;
+    padding: 2rem;
+    line-height: 1.6;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.figure-container {
+    margin: 4rem 0;
+    opacity: 0;
+    animation: fadeIn 1s ease-out forwards;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.figure-container:nth-child(2) {
+    animation-delay: 0.3s;
+}
+
+.about-section {
+    margin-bottom: 4rem;
+    border-bottom: 1px solid var(--muted-color);
+    padding-bottom: 2rem;
+}
+
+.sidebar {
+    position: fixed;
+    right: -300px;
+    top: 0;
+    width: 280px;
+    height: 100vh;
+    background-color: rgba(40, 40, 40, 0.95);
+    padding: 2rem;
+    transition: right 0.3s ease-in-out;
+    overflow-y: auto;
+}
+
+.sidebar:hover {
+    right: 0;
+}
+
+.github-link {
+    color: var(--accent-color);
+    text-decoration: none;
+    border-bottom: 1px dashed var(--accent-color);
+    transition: color 0.2s;
+}
+
+.github-link:hover {
+    color: #fff;
+}
+
+@media (max-width: 768px) {
+    body {
+        padding: 1rem;
+    }
+    
+    .figure-container {
+        margin: 2rem 0;
+    }
+    
+    .plotly-graph-div {
+        height: 60vh !important;
+    }
+}
