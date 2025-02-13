@@ -2,7 +2,6 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from common_plot_config import unified_params, data_labels, colors
 
-
 def convert_latex_for_plotly(text):
     """Convert LaTeX-formatted text to Plotly-compatible format.
     
@@ -230,10 +229,16 @@ def plot_html(dates, wealth_data, individual_count, trend_data, group_label, gro
     add_main_data_traces(fig, dates, wealth_data, trend_data)
     add_sparklines(fig, dates, individual_count, wealth_data)
     configure_layout(fig, group_desc, width, height)
-
+    
     # Save to HTML file
+    fig.write_json(
+        f"{group_label}.json",
+        validate=False,
+        pretty=True,
+        remove_uids=False,
+    )
     fig.write_html(
         f"{group_label}.html",
         include_plotlyjs="cdn",
-        include_mathjax="cdn"
+        include_mathjax="cdn",
     )
