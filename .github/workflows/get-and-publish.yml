@@ -23,7 +23,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r src/requirements.txt
 
       - name: Install necessary LaTeX packages
         run: |
@@ -32,8 +32,9 @@ jobs:
 
       - name: Run code
         run: |
-          python get_data.py
-          python make_figure.py
+          python src/get_data.py
+          python src/make_figure.py
+          mv *.svg *.html *.json docs/figures
 
       - name: Update README with last update time
         run: |
@@ -50,7 +51,7 @@ jobs:
 
       - name: Commit changes
         run: |
-          git commit -m "Automated commit by GitHub Actions: Update next scheduled run time" || echo "No changes to commit"
+          git commit -m "Automated update of the database"
 
       - name: Push changes
         run: |
