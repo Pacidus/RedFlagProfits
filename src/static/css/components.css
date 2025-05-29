@@ -137,76 +137,6 @@
   letter-spacing: 0.5px;
 }
 
-/* Responsive Design */
-@media (max-width: 768px) {
-  .header-content {
-    flex-direction: column;
-    gap: var(--space-md);
-  }
-
-  .nav {
-    display: none;
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    background-color: var(--bg-secondary);
-    border-top: 1px solid var(--bg-tertiary);
-    flex-direction: column;
-    padding: var(--space-lg);
-    gap: var(--space-md);
-  }
-
-  .nav.active {
-    display: flex;
-  }
-
-  .nav-toggle {
-    display: flex;
-  }
-
-  .nav-toggle.active span:nth-child(1) {
-    transform: rotate(45deg) translate(5px, 5px);
-  }
-
-  .nav-toggle.active span:nth-child(2) {
-    opacity: 0;
-  }
-
-  .nav-toggle.active span:nth-child(3) {
-    transform: rotate(-45deg) translate(7px, -6px);
-  }
-
-  .metrics-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .metric-value {
-    font-size: 2rem;
-  }
-
-  .chart-controls {
-    flex-wrap: wrap;
-  }
-
-  .footer-content {
-    grid-template-columns: 1fr;
-    text-align: center;
-  }
-
-  .dataset-stats {
-    flex-direction: column;
-    gap: var(--space-md);
-  }
-
-  .data-sources,
-  .calculation-grid,
-  .transparency-grid,
-  .growth-stats {
-    grid-template-columns: 1fr;
-  }
-} /* static/css/components.css - Component Styles */
-
 /* Header Component */
 .header {
   background-color: var(--bg-secondary);
@@ -356,6 +286,7 @@
   margin-bottom: var(--space-xxl);
 }
 
+/* CONSISTENT METRIC CARD STYLING */
 .metric-card {
   background-color: var(--bg-secondary);
   padding: var(--space-xl);
@@ -392,10 +323,12 @@
   font-family: var(--font-mono);
   font-size: 2.5rem;
   font-weight: 700;
-  color: var(--red-primary);
+  color: var(--red-primary); /* Consistent color for ALL cards */
   display: block;
   margin-bottom: var(--space-sm);
   line-height: 1;
+  position: relative;
+  z-index: 2;
 }
 
 .metric-label {
@@ -405,6 +338,8 @@
   letter-spacing: 0.5px;
   margin-bottom: var(--space-xs);
   font-weight: 500;
+  position: relative;
+  z-index: 2;
 }
 
 .metric-change {
@@ -412,6 +347,46 @@
   font-size: 0.875rem;
   color: var(--red-light);
   font-weight: 500;
+  position: relative;
+  z-index: 2;
+}
+
+/* Background sparkline styling */
+.metric-card.has-sparkline {
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+/* Ensure content stays above background */
+.metric-card > * {
+  position: relative;
+  z-index: 2;
+}
+
+/* Light overlay for text readability on sparkline cards */
+.metric-card.has-sparkline::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(45, 45, 45, 0.25);
+  z-index: 1;
+}
+
+/* Enhanced hover effect for sparkline cards */
+.metric-card.has-sparkline:hover::after {
+  background: rgba(45, 45, 45, 0.2);
+}
+
+/* Consistent left border for ALL cards */
+.metric-card.wealth-card,
+.metric-card.count-card,
+.metric-card.average-card,
+.metric-card.growth-card {
+  border-left: 3px solid var(--red-primary);
 }
 
 /* Chart Section */
@@ -521,105 +496,6 @@
   border-bottom: 1px solid var(--bg-tertiary);
 }
 
-/* Methodology & Data Sections */
-.data-sources {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: var(--space-lg);
-  margin: var(--space-lg) 0;
-}
-
-.source-card {
-  background-color: var(--bg-secondary);
-  padding: var(--space-lg);
-  border-radius: var(--border-radius);
-  border: 1px solid var(--bg-tertiary);
-}
-
-.source-card h4 {
-  color: var(--red-primary);
-  margin-bottom: var(--space-sm);
-}
-
-.calculation-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: var(--space-lg);
-  margin: var(--space-lg) 0;
-}
-
-.calc-card {
-  background-color: var(--bg-primary);
-  padding: var(--space-lg);
-  border-radius: var(--border-radius);
-  border: 1px solid var(--bg-tertiary);
-  text-align: center;
-}
-
-.calc-card h4 {
-  color: var(--red-primary);
-  margin-bottom: var(--space-sm);
-}
-
-.calc-card code {
-  display: block;
-  margin-top: var(--space-sm);
-  font-size: 0.875rem;
-  background-color: var(--bg-secondary);
-  padding: var(--space-sm);
-  border-radius: var(--border-radius);
-}
-
-.transparency-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: var(--space-lg);
-  margin: var(--space-lg) 0;
-}
-
-.transparency-card {
-  background-color: var(--bg-secondary);
-  padding: var(--space-lg);
-  border-radius: var(--border-radius);
-  border: 1px solid var(--bg-tertiary);
-}
-
-.transparency-card h4 {
-  color: var(--red-primary);
-  margin-bottom: var(--space-sm);
-}
-
-.dataset-stats {
-  display: flex;
-  justify-content: space-around;
-  gap: var(--space-lg);
-  margin: var(--space-lg) 0;
-  padding: var(--space-xl);
-  background-color: var(--bg-secondary);
-  border-radius: var(--border-radius);
-  border: 1px solid var(--bg-tertiary);
-}
-
-.stat {
-  text-align: center;
-}
-
-.stat-value {
-  display: block;
-  font-family: var(--font-mono);
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--red-primary);
-  margin-bottom: var(--space-xs);
-}
-
-.stat-label {
-  font-size: 0.875rem;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
 /* Responsive Design */
 @media (max-width: 768px) {
   .header-content {
@@ -684,72 +560,8 @@
 
   .data-sources,
   .calculation-grid,
-  .transparency-grid {
+  .transparency-grid,
+  .growth-stats {
     grid-template-columns: 1fr;
   }
-}
-
-/* Background Sparkline Styling */
-.metric-card {
-  background-color: var(--bg-secondary);
-  padding: var(--space-xl);
-  border-radius: var(--border-radius);
-  border: 1px solid var(--bg-tertiary);
-  text-align: center;
-  transition: var(--transition);
-  position: relative;
-  overflow: hidden;
-}
-
-/* Background sparkline overlay */
-.metric-card.has-sparkline {
-  background-size: cover;
-  background-repeat: no-repeat;
-  background-position: center;
-}
-
-/* Ensure content stays above background */
-.metric-card > * {
-  position: relative;
-  z-index: 2;
-}
-
-/* Light overlay only for text readability - much more transparent */
-.metric-card.has-sparkline::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(45, 45, 45, 0.25); /* Much lighter overlay */
-  z-index: 1;
-}
-
-/* Enhanced hover effect for sparkline cards */
-.metric-card.has-sparkline:hover {
-  border-color: var(--red-primary);
-  transform: translateY(-2px);
-}
-
-/* Hover effect that doesn't wash out the sparkline */
-.metric-card.has-sparkline:hover::before {
-  background: rgba(45, 45, 45, 0.2); /* Even lighter on hover */
-}
-
-/* Special styling for the total wealth card (most important) */
-.metric-card.wealth-card {
-  border-left: 3px solid var(--red-primary);
-}
-
-.metric-card.wealth-card .metric-value {
-  color: var(--red-light);
-  text-shadow: 0 0 10px rgba(231, 76, 60, 0.3);
-}
-
-/* All other cards keep consistent styling - no extra colors */
-.metric-card.count-card,
-.metric-card.average-card,
-.metric-card.growth-card {
-  /* Same styling as base metric-card */
 }

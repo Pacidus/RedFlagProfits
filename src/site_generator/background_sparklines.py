@@ -64,23 +64,6 @@ class BackgroundSparklineGenerator:
             print(f"⚠️  Average sparkline generation failed: {e}")
             return self._create_fallback_svg()
 
-    def generate_growth_rate_sparkline(self, time_series_data):
-        """Generate sparkline for growth rate trend - shows acceleration story."""
-
-        try:
-            clean_data = self._get_clean_growth_data(time_series_data)
-            if len(clean_data) < 2:
-                return self._create_fallback_svg()
-
-            coordinates = self._create_sparkline_coordinates(
-                clean_data, curve_type="dramatic"
-            )
-            return self._create_svg_from_coordinates(coordinates, svg_type="growth")
-
-        except Exception as e:
-            print(f"⚠️  Growth sparkline generation failed: {e}")
-            return self._create_fallback_svg()
-
     def _get_clean_wealth_data(self, time_series_data):
         """Extract and clean wealth data - full dataset with rolling average and sampling."""
 
@@ -107,14 +90,7 @@ class BackgroundSparklineGenerator:
             final_data = smoothed_data
         else:
             # Resample to exactly 70 points using interpolation
-            original_indices = np.arange(len(smoothed_data))
-            target_indices = np.linspace(0, len(smoothed_data) - 1, target_points)
-
-            # Interpolate to get smooth sampling
-            final_values = np.interp(
-                target_indices, original_indices, smoothed_data.values
-            )
-            final_data = pd.Series(final_values)
+            final_data = self._resample_data(smoothed_data, target_points)
 
         print(f"🔧 Full dataset processing:")
         print(f"   📊 Original data: {len(full_data)} points")
@@ -124,6 +100,8 @@ class BackgroundSparklineGenerator:
         print(
             f"   🚀 Total growth: {((final_data.iloc[-1] / final_data.iloc[0] - 1) * 100):.1f}%"
         )
+
+        return final_data
 
     def _get_clean_count_data(self, time_series_data):
         """Extract and clean billionaire count data."""
@@ -183,42 +161,6 @@ class BackgroundSparklineGenerator:
         print(
             f"   💰 Average range: ${final_data.min():.1f}B to ${final_data.max():.1f}B"
         )
-
-        return final_data
-
-    def _get_clean_growth_data(self, time_series_data):
-        """Extract and clean growth rate data."""
-
-        wealth_data = time_series_data["total_wealth"].dropna()
-
-        if len(wealth_data) < 20:
-            return pd.Series([8.0, 9.5, 11.0, 12.5, 13.0, 13.5, 14.0])
-
-        # Calculate rolling growth rates (30-day periods)
-        window_size = min(30, len(wealth_data) // 4)
-        growth_rates = []
-
-        for i in range(window_size, len(wealth_data)):
-            start_val = wealth_data.iloc[i - window_size]
-            end_val = wealth_data.iloc[i]
-            if start_val > 0:
-                growth_rate = ((end_val / start_val) ** (365 / window_size) - 1) * 100
-                growth_rates.append(growth_rate)
-
-        growth_data = pd.Series(growth_rates)
-
-        # Smooth the growth rates
-        smoothed_data = growth_data.rolling(window=5, center=True).mean()
-        smoothed_data = smoothed_data.bfill().ffill()
-
-        # Resample to 70 points
-        final_data = self._resample_data(smoothed_data, 70)
-
-        print(f"🔧 Growth rate processing:")
-        print(f"   📊 Original: {len(growth_data)} points")
-        print(f"   📈 Window: {window_size} days")
-        print(f"   🎯 Final: {len(final_data)} points")
-        print(f"   📈 Growth range: {final_data.min():.1f}% to {final_data.max():.1f}%")
 
         return final_data
 
@@ -408,12 +350,12 @@ class BackgroundSparklineGenerator:
         return f"data:image/svg+xml,{encoded_svg}"
 
     def generate_all_background_sparklines(self, dashboard_data):
-        """Generate all background sparklines for metric cards."""
+        """Generate background sparklines for metric cards that make sense."""
 
         sparklines = {}
 
         if "time_series" in dashboard_data and len(dashboard_data["time_series"]) > 0:
-            print("🎨 Generating sparklines for all metric cards...")
+            print("🎨 Generating sparklines for metric cards...")
 
             # Total wealth sparkline (primary metric)
             sparklines["total_wealth"] = self.generate_wealth_sparkline(
@@ -430,12 +372,9 @@ class BackgroundSparklineGenerator:
                 dashboard_data["time_series"]
             )
 
-            # Growth rate sparkline (for doubling time card)
-            sparklines["growth_rate"] = self.generate_growth_rate_sparkline(
-                dashboard_data["time_series"]
-            )
+            # No sparkline for doubling time - it's a calculated metric, not time series data
 
-            print("✅ All sparklines generated successfully!")
+            print("✅ All relevant sparklines generated successfully!")
 
         else:
             print("⚠️  No time series data available, using fallbacks")
@@ -443,6 +382,5 @@ class BackgroundSparklineGenerator:
             sparklines["total_wealth"] = fallback_svg
             sparklines["billionaire_count"] = fallback_svg
             sparklines["average_wealth"] = fallback_svg
-            sparklines["growth_rate"] = fallback_svg
 
         return sparklines
