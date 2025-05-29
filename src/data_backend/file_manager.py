@@ -1,9 +1,9 @@
 """Parquet file operations."""
 
-import os
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
+from pathlib import Path
 
 from .config import Config
 
@@ -27,7 +27,7 @@ class ParquetManager:
             write_statistics=True,
             version="2.6",
             data_page_size=Config.DATA_PAGE_SIZE,
-            dictionary_pagesize_limit=Config.DICT_PAGE_SIZE,
+            dictionary_page_size_limit=Config.DICT_PAGE_SIZE,  # Updated parameter name
         )
 
     def update_dataset(self, new_df, date_str):
@@ -35,9 +35,11 @@ class ParquetManager:
         self.logger.info("💾 Updating parquet dataset...")
 
         try:
-            if os.path.exists(Config.PARQUET_FILE):
+            parquet_path = Path(Config.PARQUET_FILE)
+
+            if parquet_path.exists():
                 # Load existing data
-                existing_df = pd.read_parquet(Config.PARQUET_FILE)
+                existing_df = pd.read_parquet(parquet_path)
 
                 # Remove any existing data for this date (handles duplicates)
                 existing_df = existing_df[
@@ -50,17 +52,19 @@ class ParquetManager:
                     ["year", "month", "day", "personName"]
                 )
 
-                self.save_parquet(combined_df, Config.PARQUET_FILE)
+                self.save_parquet(combined_df, parquet_path)
 
                 # Log results
-                file_size_mb = os.path.getsize(Config.PARQUET_FILE) / (1024 * 1024)
+                file_size_mb = parquet_path.stat().st_size / (1024 * 1024)
                 self.logger.info(
                     f"✅ Updated dataset: {len(combined_df):,} total records"
                 )
                 self.logger.info(f"📦 File size: {file_size_mb:.2f} MB")
             else:
                 # Create new file
-                self.save_parquet(new_df, Config.PARQUET_FILE)
+                # Ensure parent directory exists
+                parquet_path.parent.mkdir(parents=True, exist_ok=True)
+                self.save_parquet(new_df, parquet_path)
                 self.logger.info("✅ Created initial parquet dataset")
 
             return True

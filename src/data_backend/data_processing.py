@@ -1,10 +1,10 @@
 """Data transformation and processing utilities."""
 
-import os
 import json
 import pandas as pd
 import numpy as np
 import ast
+from pathlib import Path
 
 from .config import Config
 
@@ -21,10 +21,10 @@ class DataProcessor:
         dictionaries = {}
 
         for name in Config.DICTIONARY_NAMES:
-            dict_path = os.path.join(Config.DICT_DIR, f"{name}.json")
-            if os.path.exists(dict_path):
+            dict_path = Config.DICT_DIR / f"{name}.json"
+            if dict_path.exists():
                 try:
-                    with open(dict_path, "r") as f:
+                    with dict_path.open("r") as f:
                         dictionaries[name] = json.load(f)
                 except (json.JSONDecodeError, IOError) as e:
                     self.logger.warning(f"⚠️  Could not load {name} dictionary: {e}")
@@ -49,8 +49,8 @@ class DataProcessor:
 
     def add_inflation_data(self, df, cpi_value, pce_value):
         """Add inflation columns."""
-        df["cpi_u"] = cpi_value if cpi_value is not None else np.nan
-        df["pce"] = pce_value if pce_value is not None else np.nan
+        df.loc[:, "cpi_u"] = cpi_value if cpi_value is not None else np.nan
+        df.loc[:, "pce"] = pce_value if pce_value is not None else np.nan
 
         if cpi_value and pce_value:
             self.logger.info(
@@ -66,10 +66,10 @@ class DataProcessor:
         self.logger.info("💾 Saving dictionary mappings...")
 
         try:
-            os.makedirs(Config.DICT_DIR, exist_ok=True)
+            Config.DICT_DIR.mkdir(parents=True, exist_ok=True)
             for dict_name, dict_data in self.dictionaries.items():
-                dict_path = os.path.join(Config.DICT_DIR, f"{dict_name}.json")
-                with open(dict_path, "w") as f:
+                dict_path = Config.DICT_DIR / f"{dict_name}.json"
+                with dict_path.open("w") as f:
                     json.dump(dict_data, f, indent=2)
 
             self.logger.info("✅ Dictionary mappings saved")
@@ -84,14 +84,16 @@ class DataProcessor:
         self.logger.info("  📊 Processing financial assets...")
 
         # Parse assets safely
-        df["financialAssets"] = df["financialAssets"].apply(self._safe_parse_assets)
+        df.loc[:, "financialAssets"] = df["financialAssets"].apply(
+            self._safe_parse_assets
+        )
 
         # Extract asset columns
         assets_data = df["financialAssets"].apply(self._extract_asset_columns)
 
         # Add columns to dataframe
         for col in Config.ASSET_COLUMNS:
-            df[f"asset_{col}"] = assets_data.apply(lambda x: x.get(col, []))
+            df.loc[:, f"asset_{col}"] = assets_data.apply(lambda x: x.get(col, []))
 
         return df.drop("financialAssets", axis=1)
 
@@ -142,8 +144,8 @@ class DataProcessor:
             return df
 
         self.logger.info("  🏭 Processing industries...")
-        df["industries"] = df["industries"].apply(self._parse_complex_field)
-        df["industry_codes"] = df["industries"].apply(
+        df.loc[:, "industries"] = df["industries"].apply(self._parse_complex_field)
+        df.loc[:, "industry_codes"] = df["industries"].apply(
             lambda industries: (
                 [self._encode_value("industries", ind) for ind in industries]
                 if isinstance(industries, list) and industries
@@ -158,39 +160,46 @@ class DataProcessor:
 
         # Convert dates
         if "birthDate" in df.columns:
-            df["birthDate"] = pd.to_datetime(
+            df.loc[:, "birthDate"] = pd.to_datetime(
                 df["birthDate"], unit="ms", errors="coerce"
             )
 
-        # Encode categorical fields
+        # Encode categorical fields using pattern matching
         if "gender" in df.columns:
-            df["gender"] = df["gender"].apply(
-                lambda x: (
-                    Config.GENDER_MAP.get(x, Config.INVALID_CODE)
-                    if pd.notna(x)
-                    else Config.INVALID_CODE
-                )
-            )
+            df.loc[:, "gender"] = df["gender"].apply(self._map_gender)
 
         if "countryOfCitizenship" in df.columns:
-            df["country_code"] = df["countryOfCitizenship"].apply(
+            df.loc[:, "country_code"] = df["countryOfCitizenship"].apply(
                 lambda x: self._encode_value("countries", x)
             )
             df = df.drop("countryOfCitizenship", axis=1)
 
         if "source" in df.columns:
-            df["source_code"] = df["source"].apply(
+            df.loc[:, "source_code"] = df["source"].apply(
                 lambda x: self._encode_value("sources", x)
             )
             df = df.drop("source", axis=1)
 
         return df
 
+    def _map_gender(self, gender_value):
+        """Map gender using pattern matching."""
+        if pd.isna(gender_value):
+            return Config.INVALID_CODE
+
+        match str(gender_value).upper():
+            case "M":
+                return 0
+            case "F":
+                return 1
+            case _:
+                return Config.INVALID_CODE
+
     def _add_date_components(self, df):
         """Add date components for efficient filtering."""
-        df["year"] = df["crawl_date"].dt.year
-        df["month"] = df["crawl_date"].dt.month
-        df["day"] = df["crawl_date"].dt.day
+        df.loc[:, "year"] = df["crawl_date"].dt.year
+        df.loc[:, "month"] = df["crawl_date"].dt.month
+        df.loc[:, "day"] = df["crawl_date"].dt.day
         return df
 
     def _encode_value(self, dict_name, value):
@@ -199,7 +208,7 @@ class DataProcessor:
             return Config.INVALID_CODE
 
         value_str = str(value)
-        if value_str in ["", "nan", "None"]:
+        if value_str in {"", "nan", "None"}:
             return Config.INVALID_CODE
 
         if value_str not in self.dictionaries[dict_name]:

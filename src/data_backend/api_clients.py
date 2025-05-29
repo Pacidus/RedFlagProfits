@@ -6,6 +6,7 @@ import pandas as pd
 from datetime import timedelta
 from io import StringIO
 import time
+from pathlib import Path
 
 from .config import Config
 
@@ -39,29 +40,19 @@ class ForbesClient:
 
                 # Select relevant columns and add crawl date
                 clean_data = data[Config.FORBES_COLUMNS].copy()
-                clean_data["crawl_date"] = pd.to_datetime(date_str)
+                clean_data.loc[:, "crawl_date"] = pd.to_datetime(date_str)
 
                 self.logger.info(f"✅ Fetched {len(clean_data)} records for {date_str}")
                 return clean_data, date_str
 
-            except requests.ConnectionError as e:
+            except (requests.ConnectionError, requests.Timeout) as e:
                 self.logger.warning(
-                    f"⚠️  Connection error (attempt {attempt + 1}/{Config.MAX_RETRIES}): {e}"
+                    f"⚠️  Network error (attempt {attempt + 1}/{Config.MAX_RETRIES}): {e}"
                 )
                 if attempt < Config.MAX_RETRIES - 1:
                     time.sleep(Config.RETRY_DELAY * (attempt + 1))
                     continue
-                self.logger.error("❌ Forbes API connection failed after all retries")
-                return None, None
-
-            except requests.Timeout as e:
-                self.logger.warning(
-                    f"⚠️  Timeout error (attempt {attempt + 1}/{Config.MAX_RETRIES}): {e}"
-                )
-                if attempt < Config.MAX_RETRIES - 1:
-                    time.sleep(Config.RETRY_DELAY * (attempt + 1))
-                    continue
-                self.logger.error("❌ Forbes API timeout after all retries")
+                self.logger.error("❌ Forbes API network error after all retries")
                 return None, None
 
             except requests.HTTPError as e:
@@ -154,34 +145,22 @@ class FredClient:
 
                 # Convert to DataFrame and clean
                 df = pd.DataFrame(data["observations"])
-                df["date"] = pd.to_datetime(df["date"])
-                df["value"] = pd.to_numeric(df["value"], errors="coerce")
+                df.loc[:, "date"] = pd.to_datetime(df["date"])
+                df.loc[:, "value"] = pd.to_numeric(df["value"], errors="coerce")
                 df = df[df["value"].notna()]
 
                 self.logger.info(f"✅ Fetched {len(df)} {series_id} observations")
                 return df[["date", "value"]]
 
-            except requests.ConnectionError as e:
+            except (requests.ConnectionError, requests.Timeout) as e:
                 self.logger.warning(
-                    f"⚠️  FRED connection error for {series_id} (attempt {attempt + 1}/{Config.MAX_RETRIES}): {e}"
+                    f"⚠️  FRED network error for {series_id} (attempt {attempt + 1}/{Config.MAX_RETRIES}): {e}"
                 )
                 if attempt < Config.MAX_RETRIES - 1:
                     time.sleep(Config.RETRY_DELAY * (attempt + 1))
                     continue
                 self.logger.error(
-                    f"❌ FRED API connection failed for {series_id} after all retries"
-                )
-                return None
-
-            except requests.Timeout as e:
-                self.logger.warning(
-                    f"⚠️  FRED timeout for {series_id} (attempt {attempt + 1}/{Config.MAX_RETRIES}): {e}"
-                )
-                if attempt < Config.MAX_RETRIES - 1:
-                    time.sleep(Config.RETRY_DELAY * (attempt + 1))
-                    continue
-                self.logger.error(
-                    f"❌ FRED API timeout for {series_id} after all retries"
+                    f"❌ FRED API network error for {series_id} after all retries"
                 )
                 return None
 
@@ -204,7 +183,7 @@ class FredClient:
     def _get_monthly_value(self, data, target_month, series_name):
         """Get value for target month."""
         data_monthly = data.copy()
-        data_monthly["year_month"] = data_monthly["date"].dt.to_period("M")
+        data_monthly.loc[:, "year_month"] = data_monthly["date"].dt.to_period("M")
 
         matches = data_monthly[data_monthly["year_month"] == target_month]
         if len(matches) > 0:

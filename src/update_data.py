@@ -5,18 +5,22 @@ RedFlagProfits Data Update Pipeline
 Clean, focused script that fetches and processes billionaire data.
 """
 
-import os
 import logging
+from pathlib import Path
 
 from data_backend import Config, ForbesClient, FredClient, DataProcessor, ParquetManager
 
 
 def setup_logging():
     """Configure logging."""
+    # Ensure log file directory exists
+    log_path = Path(Config.LOG_FILE)
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s - %(levelname)s - %(message)s",
-        handlers=[logging.FileHandler(Config.LOG_FILE), logging.StreamHandler()],
+        handlers=[logging.FileHandler(log_path), logging.StreamHandler()],
     )
     return logging.getLogger(__name__)
 
@@ -26,9 +30,9 @@ def main():
     logger = setup_logging()
     logger.info("🚀 Starting RedFlagProfits data update pipeline")
 
-    # Ensure directories exist
-    os.makedirs(Config.DATA_DIR, exist_ok=True)
-    os.makedirs(Config.DICT_DIR, exist_ok=True)
+    # Ensure directories exist using pathlib
+    Config.DATA_DIR.mkdir(parents=True, exist_ok=True)
+    Config.DICT_DIR.mkdir(parents=True, exist_ok=True)
 
     try:
         # Initialize components
