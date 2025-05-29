@@ -160,7 +160,9 @@ class DataProcessor:
 
         # Convert dates
         if "birthDate" in df.columns:
-            df.loc[:, "birthDate"] = pd.to_datetime(
+            # Convert to datetime and explicitly handle the dtype
+            df = df.copy()  # Ensure we're working with a copy
+            df["birthDate"] = pd.to_datetime(
                 df["birthDate"], unit="ms", errors="coerce"
             )
 
@@ -197,9 +199,28 @@ class DataProcessor:
 
     def _add_date_components(self, df):
         """Add date components for efficient filtering."""
-        df.loc[:, "year"] = df["crawl_date"].dt.year
-        df.loc[:, "month"] = df["crawl_date"].dt.month
-        df.loc[:, "day"] = df["crawl_date"].dt.day
+        # Ensure crawl_date is properly converted to datetime
+        if "crawl_date" in df.columns:
+            # Check if it's already datetime
+            if not pd.api.types.is_datetime64_any_dtype(df["crawl_date"]):
+                df.loc[:, "crawl_date"] = pd.to_datetime(
+                    df["crawl_date"], errors="coerce"
+                )
+
+            # Only proceed if we have valid datetime data
+            if pd.api.types.is_datetime64_any_dtype(df["crawl_date"]):
+                df.loc[:, "year"] = df["crawl_date"].dt.year
+                df.loc[:, "month"] = df["crawl_date"].dt.month
+                df.loc[:, "day"] = df["crawl_date"].dt.day
+            else:
+                self.logger.warning(
+                    "⚠️  Could not convert crawl_date to datetime, skipping date components"
+                )
+                # Add default values
+                df.loc[:, "year"] = 2025
+                df.loc[:, "month"] = 1
+                df.loc[:, "day"] = 1
+
         return df
 
     def _encode_value(self, dict_name, value):

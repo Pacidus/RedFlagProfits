@@ -27,7 +27,8 @@ class ParquetManager:
             write_statistics=True,
             version="2.6",
             data_page_size=Config.DATA_PAGE_SIZE,
-            dictionary_page_size_limit=Config.DICT_PAGE_SIZE,  # Updated parameter name
+            # Removed dictionary_page_size_limit parameter as it's causing issues
+            # Can be added back later with correct parameter name if needed
         )
 
     def update_dataset(self, new_df, date_str):
