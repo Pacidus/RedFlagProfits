@@ -213,24 +213,44 @@ class DataLoader:
             print(f"⚠️  Monthly averaging failed: {e}")
             return pd.DataFrame()  # Return empty DataFrame to trigger fallback
 
+    def load_equivalency_data(self):
+        """Load reference values from CSV"""
+        csv_path = Path("data/wealth_equivalencies.csv")
+        if csv_path.exists():
+            df = pd.read_csv(csv_path).set_index("metric")
+            print(f"✅ Loaded equivalency data from CSV ({len(df)} metrics)")
+            return df
+        else:
+            print("⚠️ CSV not found, using fallback values")
+            return None
+
     def get_equivalencies(self, total_wealth_trillions):
-        """Calculate wealth equivalencies."""
+        """Calculate wealth equivalencies using CSV data."""
+        equiv_data = self.load_equivalency_data()
         total_wealth_dollars = total_wealth_trillions * 1e12
+
+        if equiv_data is not None:
+            household_income = equiv_data.loc["median_household_income", "value"]
+            worker_annual = equiv_data.loc["median_worker_annual", "value"]
+            lifetime_earnings = equiv_data.loc["median_lifetime_earnings", "value"]
+        else:
+            # Fallback to corrected hardcoded values
+            household_income, worker_annual, lifetime_earnings = 80610, 59540, 1420000
 
         return [
             {
                 "comparison": "Median US Households",
-                "value": f"{total_wealth_dollars / 70000 / 1e6:.0f} million",
-                "context": "Lifetime savings",
+                "value": f"{total_wealth_dollars / household_income / 1e6:.0f} million",
+                "context": "Annual household income",
             },
             {
-                "comparison": "Minimum Wage Workers",
-                "value": f"{total_wealth_dollars / 15000 / 1e6:.0f} million",
+                "comparison": "Median Workers",
+                "value": f"{total_wealth_dollars / worker_annual / 1e6:.0f} million",
                 "context": "Annual salaries",
             },
             {
-                "comparison": "Daily Accumulation",
-                "value": f"${total_wealth_dollars * 0.087 / 365 / 1e9:.0f} billion",
-                "context": "Per day globally",
+                "comparison": "Average US Workers",
+                "value": f"{total_wealth_dollars / lifetime_earnings / 1e6:.0f} million",
+                "context": "Lifetime careers",
             },
         ]
