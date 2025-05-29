@@ -22,6 +22,11 @@ class Config:
     CPI_SERIES = "CPIAUCNS"
     PCE_SERIES = "PCEPI"
 
+    # Network settings
+    REQUEST_TIMEOUT = 15
+    MAX_RETRIES = 3
+    RETRY_DELAY = 1
+
     # Parquet settings
     COMPRESSION_LEVEL = 22
     DATA_PAGE_SIZE = 1048576
@@ -44,8 +49,38 @@ class Config:
         "financialAssets",
     ]
 
+    # Asset processing columns
+    ASSET_COLUMNS = [
+        "exchanges",
+        "tickers",
+        "companies",
+        "shares",
+        "prices",
+        "currencies",
+        "exchange_rates",
+    ]
+
+    # Dictionary names for encoding
+    DICTIONARY_NAMES = [
+        "exchanges",
+        "currencies",
+        "industries",
+        "companies",
+        "countries",
+        "sources",
+    ]
+
+    # Constants
     GENDER_MAP = {"M": 0, "F": 1}
     INFLATION_BUFFER_DAYS = 90
+    INVALID_CODE = -1
+
+    # Asset field mappings
+    ASSET_FIELD_MAPPINGS = [
+        ("shares", "numberOfShares", 0.0),
+        ("prices", "sharePrice", 0.0),
+        ("exchange_rates", "exchangeRate", 1.0),
+    ]
 
     # Request headers
     HEADERS = {

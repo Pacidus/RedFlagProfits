@@ -18,21 +18,17 @@ class DataProcessor:
 
     def _load_dictionaries(self):
         """Load existing mapping dictionaries."""
-        dict_names = [
-            "exchanges",
-            "currencies",
-            "industries",
-            "companies",
-            "countries",
-            "sources",
-        ]
         dictionaries = {}
 
-        for name in dict_names:
+        for name in Config.DICTIONARY_NAMES:
             dict_path = os.path.join(Config.DICT_DIR, f"{name}.json")
             if os.path.exists(dict_path):
-                with open(dict_path, "r") as f:
-                    dictionaries[name] = json.load(f)
+                try:
+                    with open(dict_path, "r") as f:
+                        dictionaries[name] = json.load(f)
+                except (json.JSONDecodeError, IOError) as e:
+                    self.logger.warning(f"⚠️  Could not load {name} dictionary: {e}")
+                    dictionaries[name] = {}
             else:
                 dictionaries[name] = {}
 
@@ -69,13 +65,16 @@ class DataProcessor:
         """Save updated dictionaries."""
         self.logger.info("💾 Saving dictionary mappings...")
 
-        os.makedirs(Config.DICT_DIR, exist_ok=True)
-        for dict_name, dict_data in self.dictionaries.items():
-            dict_path = os.path.join(Config.DICT_DIR, f"{dict_name}.json")
-            with open(dict_path, "w") as f:
-                json.dump(dict_data, f, indent=2)
+        try:
+            os.makedirs(Config.DICT_DIR, exist_ok=True)
+            for dict_name, dict_data in self.dictionaries.items():
+                dict_path = os.path.join(Config.DICT_DIR, f"{dict_name}.json")
+                with open(dict_path, "w") as f:
+                    json.dump(dict_data, f, indent=2)
 
-        self.logger.info("✅ Dictionary mappings saved")
+            self.logger.info("✅ Dictionary mappings saved")
+        except IOError as e:
+            self.logger.error(f"❌ Failed to save dictionaries: {e}")
 
     def _process_financial_assets(self, df):
         """Process financial assets - simplified version."""
@@ -91,15 +90,7 @@ class DataProcessor:
         assets_data = df["financialAssets"].apply(self._extract_asset_columns)
 
         # Add columns to dataframe
-        for col in [
-            "exchanges",
-            "tickers",
-            "companies",
-            "shares",
-            "prices",
-            "currencies",
-            "exchange_rates",
-        ]:
+        for col in Config.ASSET_COLUMNS:
             df[f"asset_{col}"] = assets_data.apply(lambda x: x.get(col, []))
 
         return df.drop("financialAssets", axis=1)
@@ -108,37 +99,16 @@ class DataProcessor:
         """Safely parse asset field."""
         try:
             return self._parse_complex_field(asset_value)
-        except Exception:
+        except Exception as e:
+            self.logger.debug(f"Asset parsing failed: {e}")
             return []
 
     def _extract_asset_columns(self, assets_list):
         """Extract asset data into columns."""
         if not isinstance(assets_list, list):
-            return {
-                col: []
-                for col in [
-                    "exchanges",
-                    "tickers",
-                    "companies",
-                    "shares",
-                    "prices",
-                    "currencies",
-                    "exchange_rates",
-                ]
-            }
+            return {col: [] for col in Config.ASSET_COLUMNS}
 
-        result = {
-            col: []
-            for col in [
-                "exchanges",
-                "tickers",
-                "companies",
-                "shares",
-                "prices",
-                "currencies",
-                "exchange_rates",
-            ]
-        }
+        result = {col: [] for col in Config.ASSET_COLUMNS}
 
         for asset in assets_list:
             if not isinstance(asset, dict):
@@ -156,12 +126,8 @@ class DataProcessor:
             )
             result["tickers"].append(str(asset.get("ticker", "")))
 
-            # Numeric fields with safe conversion
-            for field, key, default in [
-                ("shares", "numberOfShares", 0.0),
-                ("prices", "sharePrice", 0.0),
-                ("exchange_rates", "exchangeRate", 1.0),
-            ]:
+            # Numeric fields with safe conversion using config
+            for field, key, default in Config.ASSET_FIELD_MAPPINGS:
                 try:
                     value = float(asset.get(key, default) or default)
                 except (ValueError, TypeError):
@@ -199,7 +165,11 @@ class DataProcessor:
         # Encode categorical fields
         if "gender" in df.columns:
             df["gender"] = df["gender"].apply(
-                lambda x: Config.GENDER_MAP.get(x, -1) if pd.notna(x) else -1
+                lambda x: (
+                    Config.GENDER_MAP.get(x, Config.INVALID_CODE)
+                    if pd.notna(x)
+                    else Config.INVALID_CODE
+                )
             )
 
         if "countryOfCitizenship" in df.columns:
@@ -225,38 +195,38 @@ class DataProcessor:
 
     def _encode_value(self, dict_name, value):
         """Encode value in dictionary."""
-        if (
-            value is None
-            or value == ""
-            or (hasattr(value, "__len__") and len(str(value)) == 0)
-        ):
-            return -1
-
-        try:
-            if pd.isna(value):
-                return -1
-        except (ValueError, TypeError):
-            pass
+        if self._is_invalid_value(value):
+            return Config.INVALID_CODE
 
         value_str = str(value)
         if value_str in ["", "nan", "None"]:
-            return -1
+            return Config.INVALID_CODE
 
         if value_str not in self.dictionaries[dict_name]:
             self.dictionaries[dict_name][value_str] = len(self.dictionaries[dict_name])
 
         return self.dictionaries[dict_name][value_str]
 
-    def _parse_complex_field(self, field_value):
-        """Parse complex fields from string format."""
-        if field_value is None or field_value == "":
-            return []
+    def _is_invalid_value(self, value):
+        """Check if value is invalid/empty."""
+        if value is None or value == "":
+            return True
+
+        if hasattr(value, "__len__") and len(str(value)) == 0:
+            return True
 
         try:
-            if pd.isna(field_value):
-                return []
+            if pd.isna(value):
+                return True
         except (ValueError, TypeError):
             pass
+
+        return False
+
+    def _parse_complex_field(self, field_value):
+        """Parse complex fields from string format."""
+        if self._is_invalid_value(field_value):
+            return []
 
         if isinstance(field_value, list):
             return field_value
@@ -266,7 +236,7 @@ class DataProcessor:
                 try:
                     result = parser(field_value)
                     return result if isinstance(result, list) else [result]
-                except:
+                except (ValueError, SyntaxError):
                     continue
             return [field_value]
 

@@ -5,6 +5,7 @@ import requests
 import pandas as pd
 from datetime import timedelta
 from io import StringIO
+import time
 
 from .config import Config
 
@@ -16,31 +17,66 @@ class ForbesClient:
         self.logger = logger
 
     def fetch_data(self):
-        """Fetch billionaire data from Forbes API."""
+        """Fetch billionaire data from Forbes API with retry logic."""
         self.logger.info("Fetching billionaire data from Forbes API...")
 
-        try:
-            response = requests.get(Config.FORBES_API, headers=Config.HEADERS)
-            response.raise_for_status()
+        for attempt in range(Config.MAX_RETRIES):
+            try:
+                response = requests.get(
+                    Config.FORBES_API,
+                    headers=Config.HEADERS,
+                    timeout=Config.REQUEST_TIMEOUT,
+                )
+                response.raise_for_status()
 
-            # Parse JSON and extract data
-            raw_data = pd.read_json(StringIO(response.text))
-            data = pd.json_normalize(raw_data["personList"]["personsLists"])
+                # Parse JSON and extract data
+                raw_data = pd.read_json(StringIO(response.text))
+                data = pd.json_normalize(raw_data["personList"]["personsLists"])
 
-            # Extract and format timestamp
-            timestamp = pd.to_datetime(data["timestamp"], unit="ms")
-            date_str = timestamp.dt.floor("D").unique()[0].strftime("%Y-%m-%d")
+                # Extract and format timestamp
+                timestamp = pd.to_datetime(data["timestamp"], unit="ms")
+                date_str = timestamp.dt.floor("D").unique()[0].strftime("%Y-%m-%d")
 
-            # Select relevant columns and add crawl date
-            clean_data = data[Config.FORBES_COLUMNS].copy()
-            clean_data["crawl_date"] = pd.to_datetime(date_str)
+                # Select relevant columns and add crawl date
+                clean_data = data[Config.FORBES_COLUMNS].copy()
+                clean_data["crawl_date"] = pd.to_datetime(date_str)
 
-            self.logger.info(f"✅ Fetched {len(clean_data)} records for {date_str}")
-            return clean_data, date_str
+                self.logger.info(f"✅ Fetched {len(clean_data)} records for {date_str}")
+                return clean_data, date_str
 
-        except Exception as e:
-            self.logger.error(f"❌ Forbes API error: {e}")
-            return None, None
+            except requests.ConnectionError as e:
+                self.logger.warning(
+                    f"⚠️  Connection error (attempt {attempt + 1}/{Config.MAX_RETRIES}): {e}"
+                )
+                if attempt < Config.MAX_RETRIES - 1:
+                    time.sleep(Config.RETRY_DELAY * (attempt + 1))
+                    continue
+                self.logger.error("❌ Forbes API connection failed after all retries")
+                return None, None
+
+            except requests.Timeout as e:
+                self.logger.warning(
+                    f"⚠️  Timeout error (attempt {attempt + 1}/{Config.MAX_RETRIES}): {e}"
+                )
+                if attempt < Config.MAX_RETRIES - 1:
+                    time.sleep(Config.RETRY_DELAY * (attempt + 1))
+                    continue
+                self.logger.error("❌ Forbes API timeout after all retries")
+                return None, None
+
+            except requests.HTTPError as e:
+                self.logger.error(f"❌ Forbes API HTTP error: {e}")
+                return None, None
+
+            except (KeyError, ValueError) as e:
+                self.logger.error(f"❌ Forbes API data parsing error: {e}")
+                return None, None
+
+            except Exception as e:
+                self.logger.error(f"❌ Unexpected Forbes API error: {e}")
+                return None, None
+
+        return None, None
 
 
 class FredClient:
@@ -93,7 +129,7 @@ class FredClient:
         return cpi_value, pce_value
 
     def _fetch_series(self, series_id, start_date, end_date):
-        """Fetch a single FRED series."""
+        """Fetch a single FRED series with retry logic."""
         params = {
             "series_id": series_id,
             "api_key": self.api_key,
@@ -102,29 +138,68 @@ class FredClient:
             "observation_end": end_date,
         }
 
-        try:
-            response = requests.get(Config.FRED_API, params=params, timeout=15)
-            response.raise_for_status()
+        for attempt in range(Config.MAX_RETRIES):
+            try:
+                response = requests.get(
+                    Config.FRED_API, params=params, timeout=Config.REQUEST_TIMEOUT
+                )
+                response.raise_for_status()
 
-            data = response.json()
-            if "error_message" in data:
+                data = response.json()
+                if "error_message" in data:
+                    self.logger.error(
+                        f"FRED API error for {series_id}: {data['error_message']}"
+                    )
+                    return None
+
+                # Convert to DataFrame and clean
+                df = pd.DataFrame(data["observations"])
+                df["date"] = pd.to_datetime(df["date"])
+                df["value"] = pd.to_numeric(df["value"], errors="coerce")
+                df = df[df["value"].notna()]
+
+                self.logger.info(f"✅ Fetched {len(df)} {series_id} observations")
+                return df[["date", "value"]]
+
+            except requests.ConnectionError as e:
+                self.logger.warning(
+                    f"⚠️  FRED connection error for {series_id} (attempt {attempt + 1}/{Config.MAX_RETRIES}): {e}"
+                )
+                if attempt < Config.MAX_RETRIES - 1:
+                    time.sleep(Config.RETRY_DELAY * (attempt + 1))
+                    continue
                 self.logger.error(
-                    f"FRED API error for {series_id}: {data['error_message']}"
+                    f"❌ FRED API connection failed for {series_id} after all retries"
                 )
                 return None
 
-            # Convert to DataFrame and clean
-            df = pd.DataFrame(data["observations"])
-            df["date"] = pd.to_datetime(df["date"])
-            df["value"] = pd.to_numeric(df["value"], errors="coerce")
-            df = df[df["value"].notna()]
+            except requests.Timeout as e:
+                self.logger.warning(
+                    f"⚠️  FRED timeout for {series_id} (attempt {attempt + 1}/{Config.MAX_RETRIES}): {e}"
+                )
+                if attempt < Config.MAX_RETRIES - 1:
+                    time.sleep(Config.RETRY_DELAY * (attempt + 1))
+                    continue
+                self.logger.error(
+                    f"❌ FRED API timeout for {series_id} after all retries"
+                )
+                return None
 
-            self.logger.info(f"✅ Fetched {len(df)} {series_id} observations")
-            return df[["date", "value"]]
+            except requests.HTTPError as e:
+                self.logger.error(f"❌ FRED API HTTP error for {series_id}: {e}")
+                return None
 
-        except Exception as e:
-            self.logger.error(f"❌ Error fetching {series_id}: {e}")
-            return None
+            except (KeyError, ValueError) as e:
+                self.logger.error(
+                    f"❌ FRED API data parsing error for {series_id}: {e}"
+                )
+                return None
+
+            except Exception as e:
+                self.logger.error(f"❌ Unexpected FRED API error for {series_id}: {e}")
+                return None
+
+        return None
 
     def _get_monthly_value(self, data, target_month, series_name):
         """Get value for target month."""
