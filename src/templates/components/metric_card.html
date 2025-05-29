@@ -1,4 +1,15 @@
-<div class="metric-card">
+<!-- Total Wealth Card with Background Sparkline -->
+<div
+  class="metric-card has-sparkline wealth-card"
+  {%
+  if
+  dashboard.background_sparklines.total_wealth
+  %}
+  style="background-image: url('{{ dashboard.background_sparklines.total_wealth }}')"
+  {%
+  endif
+  %}
+>
   <span class="metric-value">{{ dashboard.total_wealth | currency }}</span>
   <div class="metric-label">Total Billionaire Wealth</div>
   <div class="metric-change">
@@ -7,6 +18,7 @@
   </div>
 </div>
 
+<!-- Billionaire Count Card (no sparkline yet) -->
 <div class="metric-card">
   <span class="metric-value">{{ dashboard.billionaire_count | number }}</span>
   <div class="metric-label">Number of Billionaires</div>
@@ -16,6 +28,7 @@
   </div>
 </div>
 
+<!-- Average Fortune Card (no sparkline yet) -->
 <div class="metric-card">
   <span class="metric-value">{{ dashboard.average_wealth | currency }}B</span>
   <div class="metric-label">Average Fortune</div>
@@ -25,6 +38,7 @@
   </div>
 </div>
 
+<!-- Doubling Time Card (no sparkline yet) -->
 <div class="metric-card">
   <span class="metric-value"
     >{{ dashboard.doubling_time | number(1) }} years</span

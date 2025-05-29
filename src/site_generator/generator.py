@@ -7,6 +7,8 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader
 from datetime import datetime
 import shutil
+
+from .background_sparklines import BackgroundSparklineGenerator
 from .data_loader import DataLoader
 from .config import SiteConfig
 
@@ -49,6 +51,16 @@ class RedFlagsSiteGenerator:
         print("🔄 Computing fresh metrics from loaded data...")
         dashboard_data = self.data_loader.calculate_metrics(data)
         analysis_data = self.prepare_analysis_data(dashboard_data)
+
+        # NEW: Generate background sparklines
+        print("✨ Generating background sparklines...")
+        sparkline_gen = BackgroundSparklineGenerator()
+        background_sparklines = sparkline_gen.generate_all_background_sparklines(
+            dashboard_data
+        )
+
+        # Add sparklines to dashboard data for template access
+        dashboard_data["background_sparklines"] = background_sparklines
 
         # Generate single page with everything
         self.generate_index(dashboard_data, analysis_data)

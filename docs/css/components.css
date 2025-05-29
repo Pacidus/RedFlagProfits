@@ -688,3 +688,68 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Background Sparkline Styling */
+.metric-card {
+  background-color: var(--bg-secondary);
+  padding: var(--space-xl);
+  border-radius: var(--border-radius);
+  border: 1px solid var(--bg-tertiary);
+  text-align: center;
+  transition: var(--transition);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Background sparkline overlay */
+.metric-card.has-sparkline {
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+/* Ensure content stays above background */
+.metric-card > * {
+  position: relative;
+  z-index: 2;
+}
+
+/* Light overlay only for text readability - much more transparent */
+.metric-card.has-sparkline::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(45, 45, 45, 0.25); /* Much lighter overlay */
+  z-index: 1;
+}
+
+/* Enhanced hover effect for sparkline cards */
+.metric-card.has-sparkline:hover {
+  border-color: var(--red-primary);
+  transform: translateY(-2px);
+}
+
+/* Hover effect that doesn't wash out the sparkline */
+.metric-card.has-sparkline:hover::before {
+  background: rgba(45, 45, 45, 0.2); /* Even lighter on hover */
+}
+
+/* Special styling for the total wealth card (most important) */
+.metric-card.wealth-card {
+  border-left: 3px solid var(--red-primary);
+}
+
+.metric-card.wealth-card .metric-value {
+  color: var(--red-light);
+  text-shadow: 0 0 10px rgba(231, 76, 60, 0.3);
+}
+
+/* All other cards keep consistent styling - no extra colors */
+.metric-card.count-card,
+.metric-card.average-card,
+.metric-card.growth-card {
+  /* Same styling as base metric-card */
+}
