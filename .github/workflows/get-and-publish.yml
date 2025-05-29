@@ -1,5 +1,3 @@
-name: Run Code and Push Changes
-
 on:
   schedule:
     - cron: '0 0 * * *'  # Runs at midnight UTC every day
@@ -13,12 +11,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
-          python-version: 3.8
+          python-version: '3.13'
 
       - name: Install dependencies
         run: |
@@ -30,11 +28,15 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y texlive-latex-base texlive-fonts-recommended texlive-fonts-extra texlive-latex-extra
 
-      - name: Run code
+      - name: Run data pipeline
+        env:
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
         run: |
-          python src/get_data.py
-          python src/make_figure.py
-          mv *.svg *.html *.json docs/figures
+          python src/update_data.py
+
+      - name: Generate website
+        run: |
+          python src/generate_site.py
 
       - name: Update README with last update time
         run: |
@@ -51,7 +53,7 @@ jobs:
 
       - name: Commit changes
         run: |
-          git commit -m "Automated update of the database"
+          git commit -m "Automated update of data and website"
 
       - name: Push changes
         run: |
