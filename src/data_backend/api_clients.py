@@ -195,14 +195,6 @@ class FredClient:
         """Get value for target month."""
         data_monthly = data.copy()
 
-        # Debug: Check the current state of the date column
-        self.logger.info(
-            f"DEBUG - {series_name} date column dtype: {data_monthly['date'].dtype}"
-        )
-        self.logger.info(
-            f"DEBUG - {series_name} date column sample: {data_monthly['date'].head().tolist()}"
-        )
-
         try:
             # Force conversion to datetime and explicitly set the dtype
             if data_monthly["date"].dtype == "object":
@@ -223,10 +215,6 @@ class FredClient:
             if len(data_monthly) == 0:
                 self.logger.warning(f"No valid dates found for {series_name}")
                 return None
-
-            self.logger.info(
-                f"DEBUG - {series_name} after conversion dtype: {data_monthly['date'].dtype}"
-            )
 
             # Now safely use dt accessor
             data_monthly["year_month"] = data_monthly["date"].dt.to_period("M")
