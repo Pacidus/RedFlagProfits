@@ -1,7 +1,6 @@
 {% extends "base.html" %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="css/charts.css">
 {% endblock %}
 
 {% block content %}
@@ -33,7 +32,7 @@
             
             <h3>Scale of Concentration</h3>
             
-            <p>The current total billionaire wealth of <code>{{ dashboard.total_wealth | currency }} trillion</code> represents a <strong class="text-red">{{ dashboard.wealth_increase_pct | number(1) }}% increase</strong> since our data collection began on {{ dashboard.data_start_date.strftime('%Y-%m-%d') }}.</p>
+            <p>The current total billionaire wealth of <code>${{ dashboard.total_wealth_trillions | number(1) }} trillion</code> represents a <strong class="text-red">{{ dashboard.wealth_increase_pct | number(1) }}% increase</strong> since our data collection began on {{ dashboard.data_start_date.strftime('%Y-%m-%d') }}.</p>
             
             <div class="chart-section">
                 <h4 class="chart-title">Wealth Equivalencies</h4>
@@ -166,17 +165,20 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="js/charts.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+
+<!-- Custom Chart Components -->
+<script src="js/wealth-timeline-chart.js"></script>
+
 <script>
     // Initialize dashboard with data
     document.addEventListener('DOMContentLoaded', function() {
-        initializeDashboard({
-            totalWealth: {{ dashboard.total_wealth }},
-            billionaireCount: {{ dashboard.billionaire_count }},
-            averageWealth: {{ dashboard.average_wealth }},
-            growthRate: {{ dashboard.growth_rate }},
-            doublingTime: {{ dashboard.doubling_time }}
-        });
+        // Dashboard data is already passed via the chart section template
+        console.log('📊 Dashboard initialized with chart data');
+        
+        // The wealth timeline chart will auto-initialize from the global data
+        // set in the chart section template
     });
 </script>
 {% endblock %}

@@ -1,149 +1,69 @@
-/* static/css/components.css - Component Styles */
+/**
+ * Main JavaScript file for Red Flags Profits
+ * Basic functionality and navigation
+ */
 
-/* Header Component */
-.header {
-    background-color: var(--bg-secondary);
-    border-bottom: 1px solid var(--bg-tertiary);
-    padding: var(--space-lg) 0;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    backdrop-filter: blur(10px);
-}
+document.addEventListener("DOMContentLoaded", function () {
+  // Mobile navigation toggle
+  const navToggle = document.querySelector(".nav-toggle");
+  const nav = document.querySelector(".nav");
 
-.header-content {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
+  if (navToggle && nav) {
+    navToggle.addEventListener("click", function () {
+      nav.classList.toggle("active");
+      navToggle.classList.toggle("active");
+    });
+  }
 
-.logo {
-    display: flex;
-    align-items: center;
-    gap: var(--space-md);
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: var(--text-primary);
-    text-decoration: none;
-    transition: var(--transition);
-}
+  // Smooth scrolling for navigation links
+  const navLinks = document.querySelectorAll('.nav-link[href^="#"]');
 
-.logo:hover {
-    color: var(--red-light);
-}
+  navLinks.forEach((link) => {
+    link.addEventListener("click", function (e) {
+      e.preventDefault();
 
-.flag-icon {
-    width: 32px;
-    height: 24px;
-}
+      const targetId = this.getAttribute("href").substring(1);
+      const targetElement = document.getElementById(targetId);
 
-.nav {
-    display: flex;
-    gap: var(--space-xl);
-}
+      if (targetElement) {
+        targetElement.scrollIntoView({
+          behavior: "smooth",
+        });
+      }
 
-.nav-link {
-    color: var(--text-secondary);
-    text-decoration: none;
-    font-weight: 500;
-    transition: var(--transition);
-    position: relative;
-}
+      // Close mobile nav if open
+      if (nav) {
+        nav.classList.remove("active");
+      }
+      if (navToggle) {
+        navToggle.classList.remove("active");
+      }
+    });
+  });
 
-.nav-link:hover {
-    color: var(--red-primary);
-}
+  // Add active class to navigation based on scroll position
+  const sections = document.querySelectorAll("section[id]");
+  const navLinksAll = document.querySelectorAll(".nav-link");
 
-.nav-link.active::after {
-    content: '';
-    position: absolute;
-    bottom: -8px;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background-color: var(--red-primary);
-}
+  window.addEventListener("scroll", function () {
+    let current = "";
 
-.nav-toggle {
-    display: none;
-    flex-direction: column;
-    gap: 4px;
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: var(--space-sm);
-}
+    sections.forEach((section) => {
+      const sectionTop = section.offsetTop;
+      const sectionHeight = section.clientHeight;
 
-.nav-toggle span {
-    width: 24px;
-    height: 2px;
-    background-color: var(--text-primary);
-    transition: var(--transition);
-}
+      if (window.pageYOffset >= sectionTop - 200) {
+        current = section.getAttribute("id");
+      }
+    });
 
-/* Footer Component */
-.footer {
-    background-color: var(--bg-secondary);
-    padding: var(--space-xxl) 0 var(--space-xl);
-    margin-top: var(--space-xxl);
-    border-top: 1px solid var(--bg-tertiary);
-}
+    navLinksAll.forEach((link) => {
+      link.classList.remove("active");
+      if (link.getAttribute("href") === `#${current}`) {
+        link.classList.add("active");
+      }
+    });
+  });
 
-.footer-content {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: var(--space-xl);
-    margin-bottom: var(--space-xl);
-}
-
-.footer-section h4 {
-    color: var(--red-primary);
-    margin-bottom: var(--space-md);
-}
-
-.footer-section ul {
-    list-style: none;
-}
-
-.footer-section ul li {
-    color: var(--text-secondary);
-    margin-bottom: var(--space-xs);
-    font-size: 0.875rem;
-}
-
-.footer-bottom {
-    text-align: center;
-    padding-top: var(--space-lg);
-    border-top: 1px solid var(--bg-tertiary);
-    color: var(--text-muted);
-    font-size: 0.875rem;
-}
-
-/* Hero Section */
-.hero {
-    background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
-    padding: var(--space-xxl) 0;
-}
-
-.hero-title {
-    text-align: center;
-    margin-bottom: var(--space-xxl);
-}
-
-.hero-subtitle {
-    font-size: 1.25rem;
-    color: var(--text-secondary);
-    margin-bottom: var(--space-sm);
-    font-weight: 400;
-}
-
-/* Metrics Grid */
-.metrics-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: var(--space-lg);
-    margin-bottom: var(--space-xxl);
-}
-
-.metric-card {
-    background-color: var(--bg-secondary);
+  console.log("📊 Red Flags Profits main.js loaded");
+});

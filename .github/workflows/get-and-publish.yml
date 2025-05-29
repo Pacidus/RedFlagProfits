@@ -38,10 +38,6 @@ jobs:
         run: |
           python src/generate_site.py
 
-      - name: Update README with last update time
-        run: |
-          sed -i "/^Last run:/c\Last run: $(date -u)" README.md
-
       - name: Configure Git
         run: |
           git config --global user.name 'github-actions[bot]'

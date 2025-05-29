@@ -1,11 +1,18 @@
 <div class="chart-section">
-  <h3 class="chart-title">Total Billionaire Wealth Over Time</h3>
-  <div class="chart-container" id="wealth-timeline-chart">
-    <!-- Chart will be rendered here by JavaScript -->
+  <h3 class="chart-title">Total Billionaire Wealth Evolution</h3>
+  <div class="chart-container">
+    <canvas id="wealth-timeline-chart"></canvas>
   </div>
-  <div class="chart-controls">
-    <button class="chart-btn active" data-period="1y">1 Year</button>
-    <button class="chart-btn" data-period="5y">5 Years</button>
-    <button class="chart-btn" data-period="all">All Time</button>
+  <div class="chart-info">
+    <!-- Chart summary will be updated by JavaScript -->
   </div>
 </div>
+
+<!-- Pass chart data to JavaScript -->
+<script>
+  // Make sure chart data is available globally
+  window.wealthTimelineData = {{ dashboard.charts.wealth_timeline | tojson | safe }};
+  console.log('Chart data loaded:', window.wealthTimelineData ? 'success' : 'failed');
+  console.log('Trend line available:', window.wealthTimelineData?.trendLine?.length > 0);
+  console.log('Inflation data available:', window.wealthTimelineData?.inflationData !== null);
+</script>
