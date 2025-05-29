@@ -1,4 +1,4 @@
-"""API clients for Forbes and FRED data."""
+"""Simplified API clients - cleaner without unnecessary complexity."""
 
 import os
 import requests
@@ -6,7 +6,6 @@ import pandas as pd
 from datetime import timedelta
 from io import StringIO
 import time
-from pathlib import Path
 
 from .config import Config
 
@@ -21,6 +20,7 @@ class ForbesClient:
         """Fetch billionaire data from Forbes API with retry logic."""
         self.logger.info("Fetching billionaire data from Forbes API...")
 
+        # Simple retry loop - clear and direct
         for attempt in range(Config.MAX_RETRIES):
             try:
                 response = requests.get(
@@ -30,20 +30,8 @@ class ForbesClient:
                 )
                 response.raise_for_status()
 
-                # Parse JSON and extract data
-                raw_data = pd.read_json(StringIO(response.text))
-                data = pd.json_normalize(raw_data["personList"]["personsLists"])
-
-                # Extract and format timestamp
-                timestamp = pd.to_datetime(data["timestamp"], unit="ms")
-                date_str = timestamp.dt.floor("D").unique()[0].strftime("%Y-%m-%d")
-
-                # Select relevant columns and add crawl date
-                clean_data = data[Config.FORBES_COLUMNS].copy()
-                clean_data["crawl_date"] = pd.to_datetime(date_str)
-
-                self.logger.info(f"✅ Fetched {len(clean_data)} records for {date_str}")
-                return clean_data, date_str
+                # Process successful response
+                return self._process_response(response)
 
             except (requests.ConnectionError, requests.Timeout) as e:
                 self.logger.warning(
@@ -53,21 +41,33 @@ class ForbesClient:
                     time.sleep(Config.RETRY_DELAY * (attempt + 1))
                     continue
                 self.logger.error("❌ Forbes API network error after all retries")
-                return None, None
 
             except requests.HTTPError as e:
                 self.logger.error(f"❌ Forbes API HTTP error: {e}")
-                return None, None
+                break
 
             except (KeyError, ValueError) as e:
                 self.logger.error(f"❌ Forbes API data parsing error: {e}")
-                return None, None
-
-            except Exception as e:
-                self.logger.error(f"❌ Unexpected Forbes API error: {e}")
-                return None, None
+                break
 
         return None, None
+
+    def _process_response(self, response):
+        """Process API response into clean DataFrame."""
+        # Parse JSON and extract data
+        raw_data = pd.read_json(StringIO(response.text))
+        data = pd.json_normalize(raw_data["personList"]["personsLists"])
+
+        # Extract and format timestamp
+        timestamp = pd.to_datetime(data["timestamp"], unit="ms")
+        date_str = timestamp.dt.floor("D").unique()[0].strftime("%Y-%m-%d")
+
+        # Select relevant columns and add crawl date
+        clean_data = data[Config.FORBES_COLUMNS].copy()
+        clean_data["crawl_date"] = pd.to_datetime(date_str)
+
+        self.logger.info(f"✅ Fetched {len(clean_data)} records for {date_str}")
+        return clean_data, date_str
 
 
 class FredClient:
@@ -111,14 +111,8 @@ class FredClient:
         if cpi_data is None or pce_data is None:
             return None, None
 
-        # Match to target month - ensure we have a proper datetime before converting to period
-        try:
-            target_month = target_date.to_period("M")
-        except AttributeError:
-            # Fallback: convert to timestamp first
-            target_date = pd.Timestamp(target_date)
-            target_month = target_date.to_period("M")
-
+        # Get values for target month
+        target_month = target_date.to_period("M")
         cpi_value = self._get_monthly_value(cpi_data, target_month, "CPI-U")
         pce_value = self._get_monthly_value(pce_data, target_month, "PCE")
 
@@ -139,6 +133,7 @@ class FredClient:
             "observation_end": end_date,
         }
 
+        # Simple retry loop - same pattern as Forbes but tailored for FRED
         for attempt in range(Config.MAX_RETRIES):
             try:
                 response = requests.get(
@@ -155,10 +150,9 @@ class FredClient:
 
                 # Convert to DataFrame and clean
                 df = pd.DataFrame(data["observations"])
-                # Ensure date column is properly converted to datetime
                 df["date"] = pd.to_datetime(df["date"], errors="coerce")
                 df["value"] = pd.to_numeric(df["value"], errors="coerce")
-                df = df[df["value"].notna()]
+                df = df.dropna(subset=["date", "value"])
 
                 self.logger.info(f"✅ Fetched {len(df)} {series_id} observations")
                 return df[["date", "value"]]
@@ -173,53 +167,22 @@ class FredClient:
                 self.logger.error(
                     f"❌ FRED API network error for {series_id} after all retries"
                 )
-                return None
 
             except requests.HTTPError as e:
                 self.logger.error(f"❌ FRED API HTTP error for {series_id}: {e}")
-                return None
-
-            except (KeyError, ValueError) as e:
-                self.logger.error(
-                    f"❌ FRED API data parsing error for {series_id}: {e}"
-                )
-                return None
-
-            except Exception as e:
-                self.logger.error(f"❌ Unexpected FRED API error for {series_id}: {e}")
-                return None
+                break
 
         return None
 
     def _get_monthly_value(self, data, target_month, series_name):
         """Get value for target month."""
-        data_monthly = data.copy()
-
         try:
-            # Force conversion to datetime and explicitly set the dtype
-            if data_monthly["date"].dtype == "object":
-                # If it's object dtype, force convert and set proper dtype
-                data_monthly["date"] = pd.to_datetime(
-                    data_monthly["date"], errors="coerce"
-                )
-                # Explicitly convert to datetime64[ns] dtype
-                data_monthly["date"] = data_monthly["date"].astype("datetime64[ns]")
-            elif not pd.api.types.is_datetime64_any_dtype(data_monthly["date"]):
-                data_monthly["date"] = pd.to_datetime(
-                    data_monthly["date"], errors="coerce"
-                )
+            # Simple approach - convert dates and match
+            data_copy = data.copy()
+            data_copy["year_month"] = data_copy["date"].dt.to_period("M")
 
-            # Remove any rows where date conversion failed
-            data_monthly = data_monthly.dropna(subset=["date"])
-
-            if len(data_monthly) == 0:
-                self.logger.warning(f"No valid dates found for {series_name}")
-                return None
-
-            # Now safely use dt accessor
-            data_monthly["year_month"] = data_monthly["date"].dt.to_period("M")
-
-            matches = data_monthly[data_monthly["year_month"] == target_month]
+            # Look for exact match first
+            matches = data_copy[data_copy["year_month"] == target_month]
             if len(matches) > 0:
                 value = float(matches.iloc[0]["value"])
                 self.logger.info(
@@ -228,23 +191,14 @@ class FredClient:
                 return value
 
             # Fallback to most recent
-            latest_value = float(data.iloc[-1]["value"])
-            self.logger.warning(
-                f"No {series_name} for {target_month}, using latest: {latest_value}"
-            )
-            return latest_value
-
-        except Exception as e:
-            self.logger.error(f"Error processing dates for {series_name}: {e}")
-            # Emergency fallback - just use the most recent value
-            try:
-                latest_value = float(data.iloc[-1]["value"])
+            if len(data_copy) > 0:
+                latest_value = float(data_copy.iloc[-1]["value"])
                 self.logger.warning(
-                    f"Using emergency fallback for {series_name}: {latest_value}"
+                    f"No {series_name} for {target_month}, using latest: {latest_value}"
                 )
                 return latest_value
-            except Exception as fallback_error:
-                self.logger.error(
-                    f"Emergency fallback failed for {series_name}: {fallback_error}"
-                )
-                return None
+
+        except Exception as e:
+            self.logger.error(f"Error processing {series_name} data: {e}")
+
+        return None
