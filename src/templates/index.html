@@ -165,17 +165,20 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="js/charts.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+
+<!-- Custom Chart Components -->
+<script src="js/wealth-timeline-chart.js"></script>
+
 <script>
     // Initialize dashboard with data
     document.addEventListener('DOMContentLoaded', function() {
-        initializeDashboard({
-            totalWealth: {{ dashboard.total_wealth_trillions }},
-            billionaireCount: {{ dashboard.billionaire_count }},
-            averageWealth: {{ dashboard.average_wealth_billions }},
-            growthRate: {{ dashboard.growth_rate }},
-            doublingTime: {{ dashboard.doubling_time }}
-        });
+        // Dashboard data is already passed via the chart section template
+        console.log('📊 Dashboard initialized with chart data');
+        
+        // The wealth timeline chart will auto-initialize from the global data
+        // set in the chart section template
     });
 </script>
 {% endblock %}
