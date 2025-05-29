@@ -40,7 +40,7 @@ class ForbesClient:
 
                 # Select relevant columns and add crawl date
                 clean_data = data[Config.FORBES_COLUMNS].copy()
-                clean_data.loc[:, "crawl_date"] = pd.to_datetime(date_str)
+                clean_data["crawl_date"] = pd.to_datetime(date_str)
 
                 self.logger.info(f"✅ Fetched {len(clean_data)} records for {date_str}")
                 return clean_data, date_str
@@ -156,8 +156,8 @@ class FredClient:
                 # Convert to DataFrame and clean
                 df = pd.DataFrame(data["observations"])
                 # Ensure date column is properly converted to datetime
-                df.loc[:, "date"] = pd.to_datetime(df["date"], errors="coerce")
-                df.loc[:, "value"] = pd.to_numeric(df["value"], errors="coerce")
+                df["date"] = pd.to_datetime(df["date"], errors="coerce")
+                df["value"] = pd.to_numeric(df["value"], errors="coerce")
                 df = df[df["value"].notna()]
 
                 self.logger.info(f"✅ Fetched {len(df)} {series_id} observations")

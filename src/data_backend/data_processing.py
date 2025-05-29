@@ -4,7 +4,6 @@ import json
 import pandas as pd
 import numpy as np
 import ast
-from pathlib import Path
 
 from .config import Config
 
@@ -38,7 +37,7 @@ class DataProcessor:
         """Main processing pipeline."""
         self.logger.info("🔄 Processing Forbes data...")
 
-        processed_df = df.copy()
+        processed_df = df
         processed_df = self._process_financial_assets(processed_df)
         processed_df = self._process_industries(processed_df)
         processed_df = self._process_simple_fields(processed_df)
@@ -49,8 +48,8 @@ class DataProcessor:
 
     def add_inflation_data(self, df, cpi_value, pce_value):
         """Add inflation columns."""
-        df.loc[:, "cpi_u"] = cpi_value if cpi_value is not None else np.nan
-        df.loc[:, "pce"] = pce_value if pce_value is not None else np.nan
+        df["cpi_u"] = cpi_value if cpi_value is not None else np.nan
+        df["pce"] = pce_value if pce_value is not None else np.nan
 
         if cpi_value and pce_value:
             self.logger.info(
@@ -84,16 +83,14 @@ class DataProcessor:
         self.logger.info("  📊 Processing financial assets...")
 
         # Parse assets safely
-        df.loc[:, "financialAssets"] = df["financialAssets"].apply(
-            self._safe_parse_assets
-        )
+        df["financialAssets"] = df["financialAssets"].apply(self._safe_parse_assets)
 
         # Extract asset columns
         assets_data = df["financialAssets"].apply(self._extract_asset_columns)
 
         # Add columns to dataframe
         for col in Config.ASSET_COLUMNS:
-            df.loc[:, f"asset_{col}"] = assets_data.apply(lambda x: x.get(col, []))
+            df[f"asset_{col}"] = assets_data.apply(lambda x: x.get(col, []))
 
         return df.drop("financialAssets", axis=1)
 
@@ -144,8 +141,8 @@ class DataProcessor:
             return df
 
         self.logger.info("  🏭 Processing industries...")
-        df.loc[:, "industries"] = df["industries"].apply(self._parse_complex_field)
-        df.loc[:, "industry_codes"] = df["industries"].apply(
+        df["industries"] = df["industries"].apply(self._parse_complex_field)
+        df["industry_codes"] = df["industries"].apply(
             lambda industries: (
                 [self._encode_value("industries", ind) for ind in industries]
                 if isinstance(industries, list) and industries
@@ -161,23 +158,22 @@ class DataProcessor:
         # Convert dates
         if "birthDate" in df.columns:
             # Convert to datetime and explicitly handle the dtype
-            df = df.copy()  # Ensure we're working with a copy
             df["birthDate"] = pd.to_datetime(
                 df["birthDate"], unit="ms", errors="coerce"
             )
 
         # Encode categorical fields using pattern matching
         if "gender" in df.columns:
-            df.loc[:, "gender"] = df["gender"].apply(self._map_gender)
+            df["gender"] = df["gender"].apply(self._map_gender)
 
         if "countryOfCitizenship" in df.columns:
-            df.loc[:, "country_code"] = df["countryOfCitizenship"].apply(
+            df["country_code"] = df["countryOfCitizenship"].apply(
                 lambda x: self._encode_value("countries", x)
             )
             df = df.drop("countryOfCitizenship", axis=1)
 
         if "source" in df.columns:
-            df.loc[:, "source_code"] = df["source"].apply(
+            df["source_code"] = df["source"].apply(
                 lambda x: self._encode_value("sources", x)
             )
             df = df.drop("source", axis=1)
@@ -203,23 +199,21 @@ class DataProcessor:
         if "crawl_date" in df.columns:
             # Check if it's already datetime
             if not pd.api.types.is_datetime64_any_dtype(df["crawl_date"]):
-                df.loc[:, "crawl_date"] = pd.to_datetime(
-                    df["crawl_date"], errors="coerce"
-                )
+                df["crawl_date"] = pd.to_datetime(df["crawl_date"], errors="coerce")
 
             # Only proceed if we have valid datetime data
             if pd.api.types.is_datetime64_any_dtype(df["crawl_date"]):
-                df.loc[:, "year"] = df["crawl_date"].dt.year
-                df.loc[:, "month"] = df["crawl_date"].dt.month
-                df.loc[:, "day"] = df["crawl_date"].dt.day
+                df["year"] = df["crawl_date"].dt.year
+                df["month"] = df["crawl_date"].dt.month
+                df["day"] = df["crawl_date"].dt.day
             else:
                 self.logger.warning(
                     "⚠️  Could not convert crawl_date to datetime, skipping date components"
                 )
                 # Add default values
-                df.loc[:, "year"] = 2025
-                df.loc[:, "month"] = 1
-                df.loc[:, "day"] = 1
+                df["year"] = 2025
+                df["month"] = 1
+                df["day"] = 1
 
         return df
 
