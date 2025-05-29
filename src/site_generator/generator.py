@@ -63,9 +63,7 @@ class RedFlagsSiteGenerator:
         # Generate background sparklines
         print("✨ Generating background sparklines...")
         sparkline_gen = BackgroundSparklineGenerator()
-        background_sparklines = sparkline_gen.generate_all_background_sparklines(
-            dashboard_data
-        )
+        background_sparklines = sparkline_gen.generate_all_backgrounds(dashboard_data)
 
         # Add sparklines to dashboard data for template access
         dashboard_data["background_sparklines"] = background_sparklines

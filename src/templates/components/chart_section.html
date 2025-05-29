@@ -3,15 +3,7 @@
   <div class="chart-container">
     <canvas id="wealth-timeline-chart"></canvas>
   </div>
-  <div
-    class="chart-info"
-    style="
-      text-align: center;
-      margin-top: var(--space-md);
-      font-size: 0.875rem;
-      color: var(--text-muted);
-    "
-  >
+  <div class="chart-info">
     <!-- Chart summary will be updated by JavaScript -->
   </div>
 </div>
@@ -21,4 +13,6 @@
   // Make sure chart data is available globally
   window.wealthTimelineData = {{ dashboard.charts.wealth_timeline | tojson | safe }};
   console.log('Chart data loaded:', window.wealthTimelineData ? 'success' : 'failed');
+  console.log('Trend line available:', window.wealthTimelineData?.trendLine?.length > 0);
+  console.log('Inflation data available:', window.wealthTimelineData?.inflationData !== null);
 </script>

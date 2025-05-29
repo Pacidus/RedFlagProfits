@@ -1,6 +1,6 @@
 /**
  * Wealth Timeline Chart
- * Simple Chart.js implementation for total wealth evolution
+ * Enhanced with exponential trend line, animations, and inflation toggle
  */
 
 class WealthTimelineChart {
@@ -8,10 +8,15 @@ class WealthTimelineChart {
     this.canvasId = canvasId;
     this.chartData = chartData;
     this.chart = null;
+    this.showInflation = false;
+    this.inflationType = "cpi_u";
+    this.animationPlayed = false;
+    this.isAnimating = false;
 
-    // Wait for Chart.js to be available
     if (typeof Chart !== "undefined") {
       this.init();
+      this.setupScrollAnimation();
+      this.setupControls();
     } else {
       console.error("Chart.js is not loaded");
     }
@@ -26,53 +31,67 @@ class WealthTimelineChart {
 
     const ctx = canvas.getContext("2d");
 
-    // Debug: Check the data format
-    console.log("Chart data structure:", this.chartData);
-    console.log("Data points:", this.chartData.data.length);
+    // Prepare datasets
+    const datasets = this.prepareDatasets();
 
-    // Convert string dates to Date objects
-    const processedData = this.chartData.data.map((point) => ({
+    // Chart configuration
+    const config = {
+      type: "line",
+      data: { datasets },
+      options: this.getChartOptions(),
+    };
+
+    this.chart = new Chart(ctx, config);
+    this.updateInfo();
+  }
+
+  prepareDatasets() {
+    const datasets = [];
+
+    // Data points dataset
+    const dataPoints = this.chartData.data.map((point) => ({
       x: new Date(point.x),
       y: point.y,
     }));
 
-    // Chart.js configuration
-    const config = {
-      type: "line",
-      data: {
-        datasets: [
-          {
-            label: "Total Billionaire Wealth",
-            data: processedData,
-            borderColor: "#e74c3c",
-            backgroundColor: "rgba(231, 76, 60, 0.1)",
-            borderWidth: 2,
-            fill: true,
-            tension: 0.1,
-            pointRadius: 0,
-            pointHoverRadius: 6,
-            pointHoverBackgroundColor: "#e74c3c",
-            pointHoverBorderColor: "#ffffff",
-            pointHoverBorderWidth: 2,
-          },
-        ],
-      },
-      options: this.getChartOptions(),
-    };
+    datasets.push({
+      label: "Total Wealth",
+      data: dataPoints,
+      borderColor: "#8b2635", // Dark red for line
+      backgroundColor: "#8b2635", // Dark red for points
+      borderWidth: 0,
+      fill: false,
+      pointRadius: 3,
+      pointHoverRadius: 5,
+      pointBorderWidth: 0,
+      showLine: false, // Only show points
+      order: 2,
+      animation: false, // We'll handle animation ourselves
+    });
 
-    console.log(
-      "Chart config data sample:",
-      config.data.datasets[0].data.slice(0, 3),
-    );
+    // Trend line dataset
+    if (this.chartData.trendLine && this.chartData.trendLine.length > 0) {
+      const trendData = this.chartData.trendLine.map((point) => ({
+        x: new Date(point.x),
+        y: point.y,
+      }));
 
-    try {
-      this.chart = new Chart(ctx, config);
-      this.updateInfo();
-      console.log("✅ Chart created successfully");
-    } catch (error) {
-      console.error("❌ Error creating chart:", error);
-      throw error;
+      datasets.push({
+        label: "Exponential Trend",
+        data: trendData,
+        borderColor: "#e74c3c", // Vivid red for trend
+        backgroundColor: "transparent",
+        borderWidth: 3,
+        fill: false,
+        pointRadius: 0,
+        pointHoverRadius: 0,
+        tension: 0.4, // Smooth curve
+        order: 1,
+        animation: false,
+      });
     }
+
+    return datasets;
   }
 
   getChartOptions() {
@@ -94,6 +113,8 @@ class WealthTimelineChart {
               size: 14,
               weight: "500",
             },
+            usePointStyle: true,
+            padding: 20,
           },
         },
         tooltip: {
@@ -103,6 +124,7 @@ class WealthTimelineChart {
           borderColor: "#3a3a3a",
           borderWidth: 1,
           cornerRadius: 4,
+          padding: 12,
           titleFont: {
             family: "Inter, sans-serif",
             size: 14,
@@ -114,8 +136,7 @@ class WealthTimelineChart {
           },
           callbacks: {
             title: (context) => {
-              const timestamp = context[0].parsed.x;
-              const date = new Date(timestamp);
+              const date = new Date(context[0].parsed.x);
               return date.toLocaleDateString("en-US", {
                 year: "numeric",
                 month: "long",
@@ -124,7 +145,8 @@ class WealthTimelineChart {
             },
             label: (context) => {
               const value = context.parsed.y;
-              return `Total Wealth: $${value.toFixed(1)} trillion`;
+              const label = context.dataset.label;
+              return `${label}: $${value.toFixed(1)} trillion`;
             },
           },
         },
@@ -143,7 +165,7 @@ class WealthTimelineChart {
             },
           },
           grid: {
-            color: "rgba(255, 255, 255, 0.1)",
+            color: "rgba(255, 255, 255, 0.05)",
             drawOnChartArea: true,
           },
           ticks: {
@@ -157,7 +179,7 @@ class WealthTimelineChart {
         y: {
           beginAtZero: false,
           grid: {
-            color: "rgba(255, 255, 255, 0.1)",
+            color: "rgba(255, 255, 255, 0.05)",
             drawOnChartArea: true,
           },
           ticks: {
@@ -175,16 +197,177 @@ class WealthTimelineChart {
     };
   }
 
+  setupScrollAnimation() {
+    const chartContainer = document.querySelector(".chart-container");
+    if (!chartContainer) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (
+            entry.isIntersecting &&
+            !this.animationPlayed &&
+            !this.isAnimating
+          ) {
+            this.animateChart();
+            this.animationPlayed = true;
+          }
+        });
+      },
+      { threshold: 0.5 },
+    );
+
+    observer.observe(chartContainer);
+  }
+
+  animateChart() {
+    if (!this.chart || this.isAnimating) return;
+
+    this.isAnimating = true;
+    const datasets = this.chart.data.datasets;
+    const dataPoints = datasets[0].data;
+    const trendLine = datasets[1] ? datasets[1].data : [];
+
+    // Store original data
+    const originalData = dataPoints.slice();
+    const originalTrend = trendLine.slice();
+
+    // Clear data initially
+    datasets[0].data = [];
+    if (datasets[1]) datasets[1].data = [];
+    this.chart.update("none");
+
+    // Animate data points appearing
+    let pointIndex = 0;
+    const pointInterval = setInterval(() => {
+      if (pointIndex < originalData.length) {
+        datasets[0].data.push(originalData[pointIndex]);
+        this.chart.update("none");
+        pointIndex++;
+      } else {
+        clearInterval(pointInterval);
+
+        // Animate trend line after points
+        if (datasets[1] && originalTrend.length > 0) {
+          this.animateTrendLine(datasets[1], originalTrend);
+        } else {
+          this.isAnimating = false;
+        }
+      }
+    }, this.chartData.animation?.pointDelay || 10);
+  }
+
+  animateTrendLine(trendDataset, trendData) {
+    const duration = this.chartData.animation?.trendLineSpeed || 1500;
+    const steps = 50;
+    const stepDuration = duration / steps;
+    let currentStep = 0;
+
+    const interval = setInterval(() => {
+      if (currentStep <= steps) {
+        const progress = currentStep / steps;
+        const pointCount = Math.floor(trendData.length * progress);
+        trendDataset.data = trendData.slice(0, pointCount);
+        this.chart.update("none");
+        currentStep++;
+      } else {
+        clearInterval(interval);
+        this.isAnimating = false;
+      }
+    }, stepDuration);
+  }
+
+  setupControls() {
+    // Add control buttons after the chart
+    const chartSection = document.querySelector(".chart-section");
+    if (!chartSection) return;
+
+    const controlsHtml = `
+      <div class="chart-controls">
+        <button class="chart-btn active" data-view="nominal">Nominal Values</button>
+        <button class="chart-btn" data-view="inflation">Inflation Adjusted</button>
+        <button class="chart-btn" data-action="replay">Replay Animation</button>
+      </div>
+    `;
+
+    // Insert controls if not already present
+    if (!chartSection.querySelector(".chart-controls")) {
+      chartSection.insertAdjacentHTML("beforeend", controlsHtml);
+    }
+
+    // Add event listeners
+    const controls = chartSection.querySelectorAll(".chart-btn");
+    controls.forEach((btn) => {
+      btn.addEventListener("click", (e) => this.handleControlClick(e));
+    });
+  }
+
+  handleControlClick(e) {
+    const btn = e.target;
+    const view = btn.getAttribute("data-view");
+    const action = btn.getAttribute("data-action");
+
+    if (view) {
+      // Toggle inflation view
+      this.showInflation = view === "inflation";
+      this.updateChartData();
+
+      // Update button states
+      document.querySelectorAll(".chart-btn[data-view]").forEach((b) => {
+        b.classList.toggle("active", b === btn);
+      });
+    } else if (action === "replay") {
+      // Replay animation
+      this.animationPlayed = false;
+      this.animateChart();
+    }
+  }
+
+  updateChartData() {
+    if (!this.chart) return;
+
+    let dataToUse = this.chartData.data;
+
+    // Use inflation-adjusted data if available and selected
+    if (this.showInflation && this.chartData.inflationData) {
+      dataToUse = this.chartData.inflationData.data;
+      this.chart.options.scales.y.title = {
+        display: true,
+        text: `Wealth (Trillions USD, ${this.chartData.inflationData.inflationType} Adjusted)`,
+        color: "#adb5bd",
+      };
+    } else {
+      this.chart.options.scales.y.title = {
+        display: true,
+        text: "Wealth (Trillions USD)",
+        color: "#adb5bd",
+      };
+    }
+
+    // Update data points
+    const processedData = dataToUse.map((point) => ({
+      x: new Date(point.x),
+      y: point.y,
+    }));
+
+    this.chart.data.datasets[0].data = processedData;
+
+    // Note: Trend line remains the same (nominal) for simplicity
+    // You could calculate a separate inflation-adjusted trend if needed
+
+    this.chart.update();
+  }
+
   updateInfo() {
-    // Update chart description if info area exists
     const infoArea = document.querySelector(".chart-info");
     if (infoArea && this.chartData.summary) {
       const summary = this.chartData.summary;
       infoArea.innerHTML = `
-                <strong>${summary.dataPoints} data points</strong> from ${summary.timespan}<br>
-                Growth: $${summary.startValue.toFixed(1)}T → $${summary.endValue.toFixed(1)}T 
-                (+${summary.totalIncrease.toFixed(1)}%)
-            `;
+        <strong>${summary.dataPoints} data points</strong> from ${summary.timespan}<br>
+        Growth: $${summary.startValue.toFixed(1)}T → $${summary.endValue.toFixed(1)}T 
+        (+${summary.totalIncrease.toFixed(1)}%)<br>
+        <span style="color: var(--red-light)">Exponential growth rate: ${summary.exponentialGrowthRate.toFixed(1)}% per year</span>
+      `;
     }
   }
 
@@ -196,35 +379,26 @@ class WealthTimelineChart {
   }
 }
 
-// Global function to initialize wealth timeline chart
+// Global initialization
 window.initWealthTimelineChart = function (canvasId, chartData) {
   return new WealthTimelineChart(canvasId, chartData);
 };
 
-// Auto-initialize if chart data is available
+// Auto-initialize
 document.addEventListener("DOMContentLoaded", function () {
-  // Small delay to ensure Chart.js is fully loaded
   setTimeout(function () {
     if (
       typeof window.wealthTimelineData !== "undefined" &&
       typeof Chart !== "undefined"
     ) {
-      console.log("Initializing wealth timeline chart...");
       try {
         window.wealthChart = window.initWealthTimelineChart(
           "wealth-timeline-chart",
           window.wealthTimelineData,
         );
-        console.log("✅ Wealth timeline chart initialized successfully");
+        console.log("✅ Enhanced wealth timeline chart initialized");
       } catch (error) {
-        console.error("❌ Failed to initialize wealth timeline chart:", error);
-      }
-    } else {
-      if (typeof Chart === "undefined") {
-        console.error("❌ Chart.js is not loaded");
-      }
-      if (typeof window.wealthTimelineData === "undefined") {
-        console.error("❌ Chart data is not available");
+        console.error("❌ Failed to initialize chart:", error);
       }
     }
   }, 100);

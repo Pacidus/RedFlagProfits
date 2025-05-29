@@ -565,3 +565,96 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Enhanced Chart Controls */
+.chart-controls {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-sm);
+  margin-top: var(--space-lg);
+  flex-wrap: wrap;
+}
+
+.chart-btn {
+  padding: var(--space-sm) var(--space-lg);
+  background-color: var(--bg-tertiary);
+  color: var(--text-secondary);
+  border: 1px solid var(--bg-tertiary);
+  border-radius: var(--border-radius);
+  font-family: var(--font-primary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.chart-btn:hover {
+  background-color: var(--red-dark);
+  border-color: var(--red-primary);
+  color: var(--text-primary);
+  transform: translateY(-1px);
+}
+
+.chart-btn.active {
+  background-color: var(--red-primary);
+  border-color: var(--red-primary);
+  color: var(--text-primary);
+  box-shadow: 0 2px 8px rgba(231, 76, 60, 0.3);
+}
+
+.chart-btn[data-action="replay"] {
+  background-color: var(--bg-secondary);
+  border-color: var(--red-primary);
+  color: var(--red-light);
+}
+
+.chart-btn[data-action="replay"]:hover {
+  background-color: var(--red-primary);
+  color: var(--text-primary);
+}
+
+/* Chart info enhanced styling */
+.chart-info {
+  text-align: center;
+  margin-top: var(--space-md);
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.chart-info strong {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+/* Chart container animation ready state */
+.chart-container {
+  height: 400px;
+  position: relative;
+  background-color: var(--bg-primary);
+  border-radius: var(--border-radius);
+  border: 1px solid var(--bg-tertiary);
+  transition: border-color 0.3s ease;
+}
+
+.chart-container:hover {
+  border-color: var(--red-dark);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .chart-controls {
+    gap: var(--space-xs);
+  }
+
+  .chart-btn {
+    padding: var(--space-xs) var(--space-md);
+    font-size: 0.8125rem;
+  }
+
+  .chart-container {
+    height: 300px;
+  }
+}
