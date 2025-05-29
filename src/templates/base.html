@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{{ page_title }}{% endblock %}</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/components.css">
+    {% block extra_css %}{% endblock %}
+    
+    <!-- Meta tags -->
+    <meta name="description" content="{% block description %}Real-time analysis of billionaire wealth accumulation and systemic wealth monopolization.{% endblock %}">
+    <meta name="keywords" content="wealth inequality, billionaires, economic analysis, wealth concentration">
+    <meta name="author" content="Red Flags Profits">
+    
+    <!-- Open Graph -->
+    <meta property="og:title" content="{{ page_title }}">
+    <meta property="og:description" content="{% block og_description %}Tracking the concentration of global wealth and its systemic impact on society.{% endblock %}">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="assets/flag.svg">
+    
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    {% include 'components/header.html' %}
+    
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+    
+    {% include 'components/footer.html' %}
+    
+    <!-- JavaScript -->
+    <script src="js/main.js"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="css/charts.css">
+{% endblock %}
+
+{% block content %}
+<!-- Hero Dashboard Section -->
+<section class="hero section" id="dashboard">
+    <div class="container">
+        <div class="hero-title">
+            <div class="hero-subtitle">Wealth Monopolization Analysis</div>
+            <h1>Tracking the Concentration of Global Wealth</h1>
+            <p>Real-time analysis of billionaire wealth accumulation and its systemic impact on society.</p>
+            <div class="last-updated">Last updated: {{ last_updated }}</div>
+        </div>
+        
+        <div class="metrics-grid">
+            {% include 'components/metric_card.html' with context %}
+        </div>
+        
+        {% include 'components/chart_section.html' with context %}
+    </div>
+</section>
+
+<!-- Analysis Section -->
+<section class="section" id="analysis">
+    <div class="container">
+        <div class="article">
+            <h2>The Mathematics of Wealth Monopolization</h2>
+            
+            <p>This analysis examines wealth concentration as a <strong class="text-red">systemic phenomenon</strong>, not individual success stories. We focus on the mathematical reality of how much of society's wealth is being monopolized by an increasingly small group.</p>
+            
+            <h3>Scale of Concentration</h3>
+            
+            <p>The current total billionaire wealth of <code>{{ dashboard.total_wealth | currency }} trillion</code> represents a <strong class="text-red">{{ dashboard.wealth_increase_pct | number(1) }}% increase</strong> since our data collection began on {{ dashboard.data_start_date.strftime('%Y-%m-%d') }}.</p>
+            
+            <div class="chart-section">
+                <h4 class="chart-title">Wealth Equivalencies</h4>
+                <div class="equivalency-grid">
+                    {% for equiv in analysis.wealth_equivalencies %}
+                    <div class="equivalency-card">
+                        <div class="equiv-value">{{ equiv.value }}</div>
+                        <div class="equiv-label">{{ equiv.comparison }}</div>
+                        <div class="equiv-context">{{ equiv.context }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            
+            <h3>Growth Acceleration</h3>
+            
+            <p>The wealth accumulation is not just large—it's <strong class="text-red">accelerating</strong>. Current growth rates show a compound annual growth rate (CAGR) of <strong class="text-red">{{ dashboard.growth_rate | number(1) }}%</strong>, with a doubling time of just {{ dashboard.doubling_time | number(1) }} years, meaning billionaire wealth doubles faster than most economies grow.</p>
+            
+            <div class="growth-stats">
+                <div class="growth-stat">
+                    <span class="growth-value">{{ dashboard.growth_rate | number(1) }}%</span>
+                    <span class="growth-label">Annual Growth Rate (CAGR)</span>
+                </div>
+                <div class="growth-stat">
+                    <span class="growth-value">{{ dashboard.doubling_time | number(1) }}</span>
+                    <span class="growth-label">Years to Double</span>
+                </div>
+                <div class="growth-stat">
+                    <span class="growth-value">${{ dashboard.daily_accumulation | number(1) }}B</span>
+                    <span class="growth-label">Daily Accumulation</span>
+                </div>
+            </div>
+            
+            <div class="chart-section">
+                <h4 class="chart-title">Growth Rate Analysis</h4>
+                <div class="chart-container" id="growth-rate-chart">
+                    <!-- Growth rate chart goes here -->
+                </div>
+            </div>
+            
+            <h3>Real Economic Impact</h3>
+            
+            <p>Over the {{ dashboard.data_days_span }} days since data collection began ({{ dashboard.data_start_date.strftime('%Y-%m-%d') }}), billionaire wealth has grown by <strong class="text-red">{{ dashboard.wealth_increase_pct | number(1) }}%</strong> while the number of billionaires increased by <strong class="text-red">{{ dashboard.billionaire_increase_count }}</strong> individuals. This represents genuine economic value capture at an unprecedented scale.</p>
+        </div>
+    </div>
+</section>
+
+<!-- Methodology Section -->
+<section class="section" id="methodology">
+    <div class="container">
+        <div class="article">
+            <h2>Methodology</h2>
+            
+            <p>This analysis follows <strong>Edward Tufte's principles</strong> of data visualization: maximum data, minimum ink, and clear presentation of evidence.</p>
+            
+            <h3>Data Sources</h3>
+            <div class="data-sources">
+                <div class="source-card">
+                    <h4>Forbes Real-Time Billionaire List</h4>
+                    <p>Daily wealth valuations updated in real-time based on stock prices and asset values.</p>
+                </div>
+                <div class="source-card">
+                    <h4>Federal Reserve Economic Data (FRED)</h4>
+                    <p>CPI-U and PCE inflation indices for real value calculations.</p>
+                </div>
+                <div class="source-card">
+                    <h4>Bureau of Labor Statistics</h4>
+                    <p>Wage and income reference data for scale comparisons.</p>
+                </div>
+            </div>
+            
+            <h3>Key Calculations</h3>
+            <p>All growth rates use compound annual growth rate (CAGR) formulas with monthly averaging for stability when possible. Doubling time calculated using the natural logarithm formula. All increases computed from first available data point: {{ dashboard.data_start_date.strftime('%Y-%m-%d') }}.</p>
+            
+            <div class="calculation-grid">
+                <div class="calc-card">
+                    <h4>Growth Rate (CAGR)</h4>
+                    <code>CAGR = (End_Value / Start_Value)^(1/years) - 1</code>
+                </div>
+                <div class="calc-card">
+                    <h4>Doubling Time</h4>
+                    <code>ln(2) / ln(1 + growth_rate)</code>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Data Section -->
+<section class="section" id="data">
+    <div class="container">
+        <div class="article">
+            <h2>Data Transparency</h2>
+            
+            <p>All data used in this analysis is publicly available and updated daily through an automated pipeline.</p>
+            
+            <div class="transparency-grid">
+                <div class="transparency-card">
+                    <h4>Update Frequency</h4>
+                    <p>Data is collected and processed every 24 hours at midnight UTC via GitHub Actions.</p>
+                </div>
+                <div class="transparency-card">
+                    <h4>Data Processing</h4>
+                    <p>Raw data is cleaned, and stored in compressed Parquet format for efficient analysis.</p>
+                </div>
+                <div class="transparency-card">
+                    <h4>Open Source</h4>
+                    <p>All code, methodologies, and data processing scripts are available under GNU GPL v3 license.</p>
+                </div>
+            </div>
+            
+            <h3>Current Dataset</h3>
+            <div class="dataset-stats">
+                <div class="stat">
+                    <span class="stat-value">{{ dashboard.data_days_span | number }}</span>
+                    <span class="stat-label">Days Timespan</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-value">{{ dashboard.data_points | number }}</span>
+                    <span class="stat-label">Data Collection Points</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-value">{{ dashboard.data_start_date.strftime('%Y') }}</span>
+                    <span class="stat-label">Data Since</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script src="js/charts.js"></script>
+<script>
+    // Initialize dashboard with data
+    document.addEventListener('DOMContentLoaded', function() {
+        initializeDashboard({
+            totalWealth: {{ dashboard.total_wealth }},
+            billionaireCount: {{ dashboard.billionaire_count }},
+            averageWealth: {{ dashboard.average_wealth }},
+            growthRate: {{ dashboard.growth_rate }},
+            doublingTime: {{ dashboard.doubling_time }}
+        });
+    });
+</script>
+{% endblock %}
