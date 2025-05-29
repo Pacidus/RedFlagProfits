@@ -95,8 +95,7 @@ class FredClient:
             return None, None
 
         # Ensure target_date is a proper datetime object
-        if not isinstance(target_date, pd.Timestamp):
-            target_date = pd.to_datetime(target_date)
+        target_date = pd.to_datetime(target_date)
 
         # Calculate date range
         start = (target_date - timedelta(days=Config.INFLATION_BUFFER_DAYS)).strftime(

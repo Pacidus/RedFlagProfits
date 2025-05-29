@@ -49,18 +49,8 @@ def main():
             return False
 
         # Step 2: Fetch inflation data
-        # Ensure crawl_date is properly extracted as a datetime
-        crawl_date_series = forbes_data["crawl_date"]
-        if len(crawl_date_series) > 0:
-            crawl_date = crawl_date_series.iloc[0]
-            # Ensure it's a proper datetime object
-            if not isinstance(crawl_date, pd.Timestamp):
-                crawl_date = pd.to_datetime(crawl_date)
-        else:
-            logger.error("❌ No crawl_date found in Forbes data")
-            return False
-
-        logger.info(f"📅 Using crawl date: {crawl_date} (type: {type(crawl_date)})")
+        crawl_date = pd.to_datetime(forbes_data["crawl_date"].iloc[0])
+        logger.info(f"📅 Using crawl date: {crawl_date}")
         cpi_value, pce_value = fred_client.get_inflation_data(crawl_date)
 
         # Step 3: Process data

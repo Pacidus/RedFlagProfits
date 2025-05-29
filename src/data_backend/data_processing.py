@@ -197,16 +197,10 @@ class DataProcessor:
         """Add date components for efficient filtering."""
         # Ensure crawl_date is properly converted to datetime
         if "crawl_date" in df.columns:
-            # Check if it's already datetime
-            if not pd.api.types.is_datetime64_any_dtype(df["crawl_date"]):
-                df["crawl_date"] = pd.to_datetime(df["crawl_date"], errors="coerce")
+            df["crawl_date"] = pd.to_datetime(df["crawl_date"], errors="coerce")
 
-            # Only proceed if we have valid datetime data
-            if pd.api.types.is_datetime64_any_dtype(df["crawl_date"]):
-                df["year"] = df["crawl_date"].dt.year
-                df["month"] = df["crawl_date"].dt.month
-                df["day"] = df["crawl_date"].dt.day
-            else:
+            # Handle conversion failures gracefully
+            if df["crawl_date"].isna().all():
                 self.logger.warning(
                     "⚠️  Could not convert crawl_date to datetime, skipping date components"
                 )
@@ -214,6 +208,10 @@ class DataProcessor:
                 df["year"] = 2025
                 df["month"] = 1
                 df["day"] = 1
+            else:
+                df["year"] = df["crawl_date"].dt.year
+                df["month"] = df["crawl_date"].dt.month
+                df["day"] = df["crawl_date"].dt.day
 
         return df
 
