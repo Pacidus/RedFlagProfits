@@ -104,9 +104,9 @@ class RedFlagsSiteGenerator:
 
     def prepare_analysis_data(self, dashboard_data):
         """Prepare data for analysis page."""
-        # Get wealth equivalencies
+        # Get wealth equivalencies - pass the correct value in trillions
         equivalencies = self.data_loader.get_equivalencies(
-            dashboard_data["total_wealth"]
+            dashboard_data["total_wealth_trillions"]  # FIXED: Use the trillions value
         )
 
         return {
@@ -120,16 +120,13 @@ class RedFlagsSiteGenerator:
             },
         }
 
-    # Jinja2 custom filters
+    # FIXED: Jinja2 custom filters - now handle the correct units
     @staticmethod
     def format_currency(value, symbol="$", precision=1):
         """Format currency values with appropriate scale."""
-        if value >= 1000:
-            return f"{symbol}{value:.{precision}f}T"
-        elif value >= 1:
-            return f"{symbol}{value:.{precision}f}B"
-        else:
-            return f"{symbol}{value*1000:.0f}M"
+        # Value is expected to be in the unit it should be displayed as
+        # No additional conversion needed
+        return f"{symbol}{value:.{precision}f}"
 
     @staticmethod
     def format_number(value, precision=0):

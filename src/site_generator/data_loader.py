@@ -56,51 +56,78 @@ class DataLoader:
 
         # Current metrics (latest data point)
         latest = daily_totals.iloc[-1]
-        current_total_wealth = latest["total_wealth"] / 1000  # Convert to billions
+
+        # FIXED: Keep everything in consistent units - store in trillions from the start
+        current_total_wealth_trillions = (
+            latest["total_wealth"] / 1000000
+        )  # Convert from millions to trillions
         current_billionaire_count = int(latest["billionaire_count"])
-        current_avg_wealth = (
-            current_total_wealth / current_billionaire_count
+        current_avg_wealth_billions = (
+            current_total_wealth_trillions
+            * 1000
+            / current_billionaire_count  # Trillions * 1000 = billions
             if current_billionaire_count > 0
             else 0
         )
 
         # Historical comparison metrics (first vs latest for stability)
         first = daily_totals.iloc[0]
-        first_total_wealth = first["total_wealth"] / 1000
+        first_total_wealth_trillions = (
+            first["total_wealth"] / 1000000
+        )  # Convert from millions to trillions
         first_billionaire_count = int(first["billionaire_count"])
 
         # Calculate growth rates using STABLE metrics (first to latest)
-        growth_metrics = self._calculate_growth_metrics(daily_totals)
+        # Convert daily_totals to trillions for consistency
+        daily_totals_trillions = daily_totals.copy()
+        daily_totals_trillions["total_wealth"] = (
+            daily_totals_trillions["total_wealth"] / 1000000
+        )
+
+        growth_metrics = self._calculate_growth_metrics(daily_totals_trillions)
 
         # Calculate increases from first data point (retrieved from dataset)
         wealth_increase = (
-            ((current_total_wealth - first_total_wealth) / first_total_wealth * 100)
-            if first_total_wealth > 0
+            (
+                (current_total_wealth_trillions - first_total_wealth_trillions)
+                / first_total_wealth_trillions
+                * 100
+            )
+            if first_total_wealth_trillions > 0
             else 0
         )
         billionaire_increase = current_billionaire_count - first_billionaire_count
 
         # Calculate average wealth change
-        first_avg = (
-            first_total_wealth / first_billionaire_count
+        first_avg_billions = (
+            first_total_wealth_trillions
+            * 1000
+            / first_billionaire_count  # Trillions * 1000 = billions
             if first_billionaire_count > 0
             else 0
         )
         avg_wealth_increase = (
-            ((current_avg_wealth - first_avg) / first_avg * 100) if first_avg > 0 else 0
+            (
+                (current_avg_wealth_billions - first_avg_billions)
+                / first_avg_billions
+                * 100
+            )
+            if first_avg_billions > 0
+            else 0
         )
 
         print(
-            f"✅ Metrics computed: {current_billionaire_count:,} billionaires, ${current_total_wealth/1000:.1f}T total"
+            f"✅ Metrics computed: {current_billionaire_count:,} billionaires, ${current_total_wealth_trillions:.1f}T total"
         )
         print(
             f"📈 Growth: {growth_metrics['annual_growth_rate']:.1f}% CAGR, {wealth_increase:.1f}% total increase"
         )
 
         return {
-            "total_wealth": current_total_wealth / 1000,  # Convert to trillions
+            # FIXED: Store values in their final display units
+            "total_wealth_trillions": current_total_wealth_trillions,  # In trillions (16.6)
             "billionaire_count": current_billionaire_count,
-            "average_wealth": current_avg_wealth,
+            "average_wealth_billions": current_avg_wealth_billions,  # In billions (5.5)
             "growth_rate": growth_metrics["annual_growth_rate"],
             "doubling_time": growth_metrics["doubling_time"],
             "daily_accumulation": growth_metrics["daily_accumulation"],
@@ -114,8 +141,8 @@ class DataLoader:
             "data_end_date": data_end_date,
             "data_days_span": data_days_span,  # Actual timespan in days
             "data_points": data_points,  # Number of collection points
-            # Time series data for potential charts
-            "time_series": daily_totals,
+            # Time series data for potential charts (also in trillions)
+            "time_series": daily_totals_trillions,
         }
 
     def _calculate_growth_metrics(self, daily_totals):
@@ -174,15 +201,18 @@ class DataLoader:
             doubling_time = float("inf")
 
         # Calculate daily accumulation (based on current growth rate)
-        current_value = daily_totals.iloc[-1]["total_wealth"]
-        daily_accumulation = (
-            (current_value * annual_growth_rate / 100) / 365 / 1000
-        )  # In billions per day
+        # Current value is already in trillions, daily accumulation should be in billions
+        current_value_trillions = daily_totals.iloc[-1]["total_wealth"]
+        daily_accumulation_billions = (
+            (current_value_trillions * annual_growth_rate / 100)
+            / 365
+            * 1000  # Convert to billions per day
+        )
 
         return {
             "annual_growth_rate": annual_growth_rate,
             "doubling_time": doubling_time,
-            "daily_accumulation": daily_accumulation,
+            "daily_accumulation": daily_accumulation_billions,  # In billions per day
         }
 
     def _get_monthly_averages(self, daily_totals):
@@ -227,7 +257,9 @@ class DataLoader:
     def get_equivalencies(self, total_wealth_trillions):
         """Calculate wealth equivalencies using CSV data."""
         equiv_data = self.load_equivalency_data()
-        total_wealth_dollars = total_wealth_trillions * 1e12
+        total_wealth_dollars = (
+            total_wealth_trillions * 1e12
+        )  # Convert trillions to dollars
 
         if equiv_data is not None:
             household_income = equiv_data.loc["median_household_income", "value"]

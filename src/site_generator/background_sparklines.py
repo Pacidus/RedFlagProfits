@@ -65,13 +65,20 @@ class BackgroundSparklineGenerator:
             return self._create_fallback_svg()
 
     def _get_clean_wealth_data(self, time_series_data):
-        """Extract and clean wealth data - full dataset with rolling average and sampling."""
+        """Extract and clean wealth data - FIXED to handle DataFrame structure."""
 
-        # Step 1: Use ALL available data to show complete trend
-        full_data = time_series_data["total_wealth"].dropna()
+        # FIXED: Handle the time_series DataFrame structure properly
+        if isinstance(time_series_data, pd.DataFrame):
+            # Data is already in trillions from the fixed data loader
+            full_data = time_series_data["total_wealth"].dropna()
+            print(f"🔧 Using DataFrame with {len(full_data)} wealth data points")
+        else:
+            print("⚠️  Unexpected time series data format, using fallback")
+            return pd.Series([10.0, 12.0, 14.0, 16.0, 16.6])
 
         if len(full_data) < 10:
             # Fallback for insufficient data
+            print("⚠️  Insufficient data points, using synthetic fallback")
             return pd.Series([10.0, 12.0, 14.0, 16.0, 16.6])
 
         # Step 2: Apply rolling average to smooth out noise
@@ -92,11 +99,13 @@ class BackgroundSparklineGenerator:
             # Resample to exactly 70 points using interpolation
             final_data = self._resample_data(smoothed_data, target_points)
 
-        print(f"🔧 Full dataset processing:")
+        print(f"🔧 Wealth sparkline processing:")
         print(f"   📊 Original data: {len(full_data)} points")
         print(f"   📈 Rolling average window: {window_size} points")
         print(f"   🎯 Final sampled data: {len(final_data)} points")
-        print(f"   📉 Value range: {final_data.min():.1f}T to {final_data.max():.1f}T")
+        print(
+            f"   📉 Value range: ${final_data.min():.1f}T to ${final_data.max():.1f}T"
+        )
         print(
             f"   🚀 Total growth: {((final_data.iloc[-1] / final_data.iloc[0] - 1) * 100):.1f}%"
         )
@@ -104,9 +113,14 @@ class BackgroundSparklineGenerator:
         return final_data
 
     def _get_clean_count_data(self, time_series_data):
-        """Extract and clean billionaire count data."""
+        """Extract and clean billionaire count data - FIXED."""
 
-        full_data = time_series_data["billionaire_count"].dropna()
+        if isinstance(time_series_data, pd.DataFrame):
+            full_data = time_series_data["billionaire_count"].dropna()
+            print(f"🔧 Using DataFrame with {len(full_data)} count data points")
+        else:
+            print("⚠️  Using fallback count data")
+            return pd.Series([2500, 2600, 2700, 2800, 2900, 3000, 3024])
 
         if len(full_data) < 10:
             return pd.Series([2500, 2600, 2700, 2800, 2900, 3000, 3024])
@@ -130,22 +144,30 @@ class BackgroundSparklineGenerator:
         return final_data
 
     def _get_clean_average_data(self, time_series_data):
-        """Extract and clean average billionaire wealth data."""
+        """Extract and clean average billionaire wealth data - FIXED."""
 
-        # Calculate average wealth per billionaire
-        wealth_data = time_series_data["total_wealth"].dropna()
-        count_data = time_series_data["billionaire_count"].dropna()
+        if isinstance(time_series_data, pd.DataFrame):
+            # Calculate average wealth per billionaire from the DataFrame
+            wealth_data = time_series_data[
+                "total_wealth"
+            ].dropna()  # Already in trillions
+            count_data = time_series_data["billionaire_count"].dropna()
 
-        # Align the data by taking common indices
-        common_indices = wealth_data.index.intersection(count_data.index)
+            # Align the data by taking common indices
+            common_indices = wealth_data.index.intersection(count_data.index)
+            print(f"🔧 Using DataFrame with {len(common_indices)} aligned data points")
+        else:
+            print("⚠️  Using fallback average data")
+            return pd.Series([4.0, 4.2, 4.5, 4.8, 5.1, 5.3, 5.5])
+
         if len(common_indices) < 10:
             return pd.Series([4.0, 4.2, 4.5, 4.8, 5.1, 5.3, 5.5])
 
         aligned_wealth = wealth_data.loc[common_indices]
         aligned_count = count_data.loc[common_indices]
 
-        # Calculate average (avoid division by zero)
-        average_data = aligned_wealth / aligned_count.replace(0, 1)
+        # Calculate average wealth per billionaire (trillions * 1000 = billions)
+        average_data = (aligned_wealth * 1000) / aligned_count.replace(0, 1)
 
         # Smooth and resample
         window_size = max(3, len(average_data) // 20)
@@ -275,7 +297,6 @@ class BackgroundSparklineGenerator:
             "wealth": {"light": "#404040", "dark": "#1a1a1a"},  # Strong contrast
             "count": {"light": "#3a3a3a", "dark": "#222222"},  # Moderate contrast
             "average": {"light": "#383838", "dark": "#1f1f1f"},  # Subtle contrast
-            "growth": {"light": "#424242", "dark": "#181818"},  # High contrast
         }
 
         colors = color_schemes.get(svg_type, color_schemes["wealth"])

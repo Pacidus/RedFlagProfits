@@ -33,7 +33,7 @@
             
             <h3>Scale of Concentration</h3>
             
-            <p>The current total billionaire wealth of <code>{{ dashboard.total_wealth | currency }} trillion</code> represents a <strong class="text-red">{{ dashboard.wealth_increase_pct | number(1) }}% increase</strong> since our data collection began on {{ dashboard.data_start_date.strftime('%Y-%m-%d') }}.</p>
+            <p>The current total billionaire wealth of <code>${{ dashboard.total_wealth_trillions | number(1) }} trillion</code> represents a <strong class="text-red">{{ dashboard.wealth_increase_pct | number(1) }}% increase</strong> since our data collection began on {{ dashboard.data_start_date.strftime('%Y-%m-%d') }}.</p>
             
             <div class="chart-section">
                 <h4 class="chart-title">Wealth Equivalencies</h4>
@@ -171,9 +171,9 @@
     // Initialize dashboard with data
     document.addEventListener('DOMContentLoaded', function() {
         initializeDashboard({
-            totalWealth: {{ dashboard.total_wealth }},
+            totalWealth: {{ dashboard.total_wealth_trillions }},
             billionaireCount: {{ dashboard.billionaire_count }},
-            averageWealth: {{ dashboard.average_wealth }},
+            averageWealth: {{ dashboard.average_wealth_billions }},
             growthRate: {{ dashboard.growth_rate }},
             doublingTime: {{ dashboard.doubling_time }}
         });
