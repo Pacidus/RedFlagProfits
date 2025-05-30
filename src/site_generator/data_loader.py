@@ -22,267 +22,242 @@ class DataLoader:
         return df.sort_values("crawl_date")
 
     def calculate_metrics(self, df):
-        """Calculate key metrics from the data - COMPUTED FRESH EACH TIME."""
+        """Calculate key metrics from the data."""
         print("📊 Computing dashboard metrics from data...")
 
-        # Group by date for time series analysis
-        daily_totals = (
-            df.groupby("crawl_date")
-            .agg(
-                {
-                    "finalWorth": "sum",
-                    "personName": "nunique",  # Count unique billionaires per day
-                }
-            )
-            .reset_index()
+        daily_totals = self._compute_daily_totals(df)
+        data_start, data_end, data_days, data_points = self._get_data_range(
+            daily_totals
         )
 
-        daily_totals.columns = ["date", "total_wealth", "billionaire_count"]
-        daily_totals = daily_totals.sort_values("date")
-
-        if len(daily_totals) == 0:
-            raise ValueError("No data available for calculations")
-
-        # Get actual date range from the dataset (actual timespan, not data point count)
-        data_start_date = daily_totals.iloc[0]["date"]
-        data_end_date = daily_totals.iloc[-1]["date"]
-        data_days_span = (data_end_date - data_start_date).days  # Actual timespan
-        data_points = len(daily_totals)  # Number of data collection points
-
         print(
-            f"📅 Dataset timespan: {data_start_date.strftime('%Y-%m-%d')} to {data_end_date.strftime('%Y-%m-%d')} ({data_days_span} days)"
+            f"📅 Dataset timespan: {data_start.strftime('%Y-%m-%d')} to "
+            f"{data_end.strftime('%Y-%m-%d')} ({data_days} days)"
         )
         print(f"📊 Data collection points: {data_points} days with data")
 
-        # Current metrics (latest data point)
+        # Process current and historical metrics
         latest = daily_totals.iloc[-1]
-
-        # FIXED: Keep everything in consistent units - store in trillions from the start
-        current_total_wealth_trillions = (
-            latest["total_wealth"] / 1000000
-        )  # Convert from millions to trillions
-        current_billionaire_count = int(latest["billionaire_count"])
-        current_avg_wealth_billions = (
-            current_total_wealth_trillions
-            * 1000
-            / current_billionaire_count  # Trillions * 1000 = billions
-            if current_billionaire_count > 0
-            else 0
-        )
-
-        # Historical comparison metrics (first vs latest for stability)
         first = daily_totals.iloc[0]
-        first_total_wealth_trillions = (
-            first["total_wealth"] / 1000000
-        )  # Convert from millions to trillions
-        first_billionaire_count = int(first["billionaire_count"])
 
-        # Calculate growth rates using STABLE metrics (first to latest)
-        # Convert daily_totals to trillions for consistency
-        daily_totals_trillions = daily_totals.copy()
-        daily_totals_trillions["total_wealth"] = (
-            daily_totals_trillions["total_wealth"] / 1000000
-        )
-
-        growth_metrics = self._calculate_growth_metrics(daily_totals_trillions)
-
-        # Calculate increases from first data point (retrieved from dataset)
-        wealth_increase = (
-            (
-                (current_total_wealth_trillions - first_total_wealth_trillions)
-                / first_total_wealth_trillions
-                * 100
-            )
-            if first_total_wealth_trillions > 0
-            else 0
-        )
-        billionaire_increase = current_billionaire_count - first_billionaire_count
-
-        # Calculate average wealth change
-        first_avg_billions = (
-            first_total_wealth_trillions
-            * 1000
-            / first_billionaire_count  # Trillions * 1000 = billions
-            if first_billionaire_count > 0
-            else 0
-        )
-        avg_wealth_increase = (
-            (
-                (current_avg_wealth_billions - first_avg_billions)
-                / first_avg_billions
-                * 100
-            )
-            if first_avg_billions > 0
-            else 0
-        )
+        current_metrics = self._compute_current_metrics(latest)
+        historical_metrics = self._compute_historical_metrics(first, latest)
+        growth_metrics = self._calculate_growth_metrics(daily_totals)
 
         print(
-            f"✅ Metrics computed: {current_billionaire_count:,} billionaires, ${current_total_wealth_trillions:.1f}T total"
+            f"✅ Metrics computed: {current_metrics['billionaire_count']:,} billionaires, "
+            f"${current_metrics['total_wealth_trillions']:.1f}T total"
         )
         print(
-            f"📈 Growth: {growth_metrics['annual_growth_rate']:.1f}% CAGR, {wealth_increase:.1f}% total increase"
+            f"📈 Growth: {growth_metrics['growth_rate']:.1f}% CAGR, "
+            f"{historical_metrics['wealth_increase_pct']:.1f}% total increase"
         )
 
         return {
-            # FIXED: Store values in their final display units
-            "total_wealth_trillions": current_total_wealth_trillions,  # In trillions (16.6)
-            "billionaire_count": current_billionaire_count,
-            "average_wealth_billions": current_avg_wealth_billions,  # In billions (5.5)
-            "growth_rate": growth_metrics["annual_growth_rate"],
-            "doubling_time": growth_metrics["doubling_time"],
-            "daily_accumulation": growth_metrics["daily_accumulation"],
-            "last_updated": data_end_date,
-            # Historical increases (from first data point retrieved from dataset)
-            "wealth_increase_pct": wealth_increase,
-            "billionaire_increase_count": billionaire_increase,
-            "avg_wealth_increase_pct": avg_wealth_increase,
-            # Data range info (retrieved from actual dataset)
-            "data_start_date": data_start_date,
-            "data_end_date": data_end_date,
-            "data_days_span": data_days_span,  # Actual timespan in days
-            "data_points": data_points,  # Number of collection points
-            # Time series data for potential charts (also in trillions)
-            "time_series": daily_totals_trillions,
+            **current_metrics,
+            **growth_metrics,
+            **historical_metrics,
+            "last_updated": data_end,
+            "data_start_date": data_start,
+            "data_end_date": data_end,
+            "data_days_span": data_days,
+            "data_points": data_points,
+            "time_series": self._convert_to_trillions(daily_totals),
         }
 
-    def _calculate_growth_metrics(self, daily_totals):
-        """Calculate growth metrics using STABLE time series approach."""
-        if len(daily_totals) < 2:
-            return {
-                "annual_growth_rate": 0.0,
-                "doubling_time": float("inf"),
-                "daily_accumulation": 0.0,
-            }
-
-        # Use monthly averages for more stable growth calculation
-        monthly_data = self._get_monthly_averages(daily_totals)
-
-        if len(monthly_data) < 2:
-            # Fallback to daily data if insufficient monthly data
-            start_value = daily_totals.iloc[0]["total_wealth"]
-            end_value = daily_totals.iloc[-1]["total_wealth"]
-            start_date = daily_totals.iloc[0]["date"]
-            end_date = daily_totals.iloc[-1]["date"]
-            print("⚠️  Using daily data for CAGR (insufficient monthly data)")
-        else:
-            # Use monthly averages for stability
-            start_value = monthly_data.iloc[0]["total_wealth"]
-            end_value = monthly_data.iloc[-1]["total_wealth"]
-            start_date = monthly_data.iloc[0]["date"]
-            end_date = monthly_data.iloc[-1]["date"]
-            print(
-                f"✅ Using monthly averages for stable CAGR calculation ({len(monthly_data)} months)"
+    def _compute_daily_totals(self, df):
+        """Group data by date and calculate daily totals."""
+        grouped = (
+            df.groupby("crawl_date")
+            .agg(
+                total_wealth=("finalWorth", "sum"),
+                billionaire_count=("personName", "nunique"),
             )
+            .reset_index()
+        )
+        grouped.columns = ["date", "total_wealth", "billionaire_count"]
+        return grouped.sort_values("date")
 
-        # Calculate actual time span (not just data points)
-        days_diff = (end_date - start_date).days
+    def _get_data_range(self, daily_totals):
+        """Extract dataset date range information."""
+        if len(daily_totals) == 0:
+            raise ValueError("No data available for calculations")
+        start = daily_totals.iloc[0]["date"]
+        end = daily_totals.iloc[-1]["date"]
+        return (start, end, (end - start).days, len(daily_totals))
 
-        if days_diff == 0 or start_value == 0:
-            return {
-                "annual_growth_rate": 0.0,
-                "doubling_time": float("inf"),
-                "daily_accumulation": 0.0,
-            }
+    def _compute_current_metrics(self, latest):
+        """Calculate metrics from the latest data point."""
+        wealth_trillions = latest["total_wealth"] / 1_000_000
+        count = int(latest["billionaire_count"])
+        avg_billions = (wealth_trillions * 1000) / count if count > 0 else 0
 
-        # Calculate CAGR (Compound Annual Growth Rate)
-        years_diff = days_diff / 365.25
-        annual_growth_rate = ((end_value / start_value) ** (1 / years_diff) - 1) * 100
+        return {
+            "total_wealth_trillions": wealth_trillions,
+            "billionaire_count": count,
+            "average_wealth_billions": avg_billions,
+        }
 
-        # Cap growth rate for sanity (prevent extreme outliers)
-        annual_growth_rate = max(min(annual_growth_rate, 100), -50)
+    def _compute_historical_metrics(self, first, latest):
+        """Calculate historical comparisons between first and latest data points."""
 
-        # Calculate doubling time using correct formula: ln(2) / ln(1 + r)
-        if annual_growth_rate > 0:
-            import math
+        def to_trillions(x):
+            return x["total_wealth"] / 1_000_000
 
-            growth_rate_decimal = annual_growth_rate / 100
-            doubling_time = math.log(2) / math.log(1 + growth_rate_decimal)
-        else:
-            doubling_time = float("inf")
+        first_wealth = to_trillions(first)
+        latest_wealth = to_trillions(latest)
+        first_count = int(first["billionaire_count"])
+        latest_count = int(latest["billionaire_count"])
 
-        # Calculate daily accumulation (based on current growth rate)
-        # Current value is already in trillions, daily accumulation should be in billions
-        current_value_trillions = daily_totals.iloc[-1]["total_wealth"]
-        daily_accumulation_billions = (
-            (current_value_trillions * annual_growth_rate / 100)
-            / 365
-            * 1000  # Convert to billions per day
+        def avg_wealth(wealth, count):
+            return (wealth * 1000) / count if count > 0 else 0
+
+        wealth_pct = self._pct_change(latest_wealth, first_wealth)
+        count_diff = latest_count - first_count
+        avg_pct = self._pct_change(
+            avg_wealth(latest_wealth, latest_count),
+            avg_wealth(first_wealth, first_count),
         )
 
         return {
-            "annual_growth_rate": annual_growth_rate,
+            "wealth_increase_pct": wealth_pct,
+            "billionaire_increase_count": count_diff,
+            "avg_wealth_increase_pct": avg_pct,
+        }
+
+    def _pct_change(self, new, old):
+        """Calculate percentage change between two values."""
+        return ((new - old) / old * 100) if old != 0 else 0
+
+    def _convert_to_trillions(self, df):
+        """Convert wealth column to trillions in a DataFrame copy."""
+        df_copy = df.copy()
+        df_copy["total_wealth"] /= 1_000_000
+        return df_copy
+
+    def _calculate_growth_metrics(self, daily_totals):
+        """Calculate growth metrics using stable time series approach."""
+        if len(daily_totals) < 2:
+            return {
+                "growth_rate": 0.0,
+                "doubling_time": float("inf"),
+                "daily_accumulation": 0.0,
+            }
+
+        # Use monthly averages if possible
+        monthly_data = self._get_monthly_averages(daily_totals)
+        use_monthly = len(monthly_data) >= 2
+
+        source = monthly_data if use_monthly else daily_totals
+        if not use_monthly and len(daily_totals) >= 2:
+            print("⚠️ Using daily data for CAGR (insufficient monthly data)")
+        elif use_monthly:
+            print(f"✅ Using monthly averages ({len(monthly_data)} months)")
+
+        start_val = source.iloc[0]["total_wealth"]
+        end_val = source.iloc[-1]["total_wealth"]
+        start_date = source.iloc[0]["date"]
+        end_date = source.iloc[-1]["date"]
+        days_diff = (end_date - start_date).days
+
+        if days_diff == 0 or start_val == 0:
+            return {
+                "growth_rate": 0.0,
+                "doubling_time": float("inf"),
+                "daily_accumulation": 0.0,
+            }
+
+        # Calculate CAGR
+        years_diff = days_diff / 365.25
+        cagr = ((end_val / start_val) ** (1 / years_diff) - 1) * 100
+        cagr = max(min(cagr, 100), -50)  # Cap extreme values
+
+        # Calculate doubling time and daily accumulation
+        if cagr > 0:
+            growth_decimal = cagr / 100
+            doubling_time = np.log(2) / np.log(1 + growth_decimal)
+
+            daily_accumulation = (end_val - start_val) / (
+                1000 * days_diff
+            )  # Billions/day
+        else:
+            doubling_time = float("inf")
+            daily_accumulation = 0.0
+
+        return {
+            "growth_rate": cagr,
             "doubling_time": doubling_time,
-            "daily_accumulation": daily_accumulation_billions,  # In billions per day
+            "daily_accumulation": daily_accumulation,
         }
 
     def _get_monthly_averages(self, daily_totals):
-        """Get monthly averages for more stable growth calculations."""
+        """Compute monthly averages for stable growth calculations."""
         try:
-            # Add year-month column
-            daily_totals_copy = daily_totals.copy()
-            daily_totals_copy["year_month"] = daily_totals_copy["date"].dt.to_period(
-                "M"
-            )
-
-            # Calculate monthly averages
-            monthly_avg = (
-                daily_totals_copy.groupby("year_month")
+            daily_totals["year_month"] = daily_totals["date"].dt.to_period("M")
+            monthly = (
+                daily_totals.groupby("year_month")
                 .agg(
-                    {
-                        "total_wealth": "mean",
-                        "billionaire_count": "mean",
-                        "date": "first",  # Use first date of month as representative
-                    }
+                    total_wealth=("total_wealth", "mean"),
+                    billionaire_count=("billionaire_count", "mean"),
+                    date=("date", "first"),
                 )
                 .reset_index()
             )
-
-            return monthly_avg.sort_values("date")
-
+            return monthly.sort_values("date")
         except Exception as e:
-            print(f"⚠️  Monthly averaging failed: {e}")
-            return pd.DataFrame()  # Return empty DataFrame to trigger fallback
+            print(f"⚠️ Monthly averaging failed: {e}")
+            return pd.DataFrame()
 
     def load_equivalency_data(self):
-        """Load reference values from CSV"""
+        """Load reference values from CSV."""
         csv_path = Path("data/wealth_equivalencies.csv")
-        if csv_path.exists():
-            df = pd.read_csv(csv_path).set_index("metric")
-            print(f"✅ Loaded equivalency data from CSV ({len(df)} metrics)")
-            return df
-        else:
+        if not csv_path.exists():
             print("⚠️ CSV not found, using fallback values")
             return None
+        df = pd.read_csv(csv_path).set_index("metric")
+        print(f"✅ Loaded equivalency data ({len(df)} metrics)")
+        return df
 
     def get_equivalencies(self, total_wealth_trillions):
-        """Calculate wealth equivalencies using CSV data."""
+        """Calculate wealth equivalencies."""
         equiv_data = self.load_equivalency_data()
-        total_wealth_dollars = (
-            total_wealth_trillions * 1e12
-        )  # Convert trillions to dollars
+        total_dollars = total_wealth_trillions * 1e12
 
-        if equiv_data is not None:
-            household_income = equiv_data.loc["median_household_income", "value"]
-            worker_annual = equiv_data.loc["median_worker_annual", "value"]
-            lifetime_earnings = equiv_data.loc["median_lifetime_earnings", "value"]
-        else:
-            # Fallback to corrected hardcoded values
-            household_income, worker_annual, lifetime_earnings = 80610, 59540, 1420000
+        # Define fallback values
+        defaults = {
+            "median_household_income": 80610,
+            "median_worker_annual": 59540,
+            "median_lifetime_earnings": 1_420_000,
+        }
 
-        return [
-            {
-                "comparison": "Median US Households",
-                "value": f"{total_wealth_dollars / household_income / 1e6:.0f} million",
-                "context": "Annual household income",
-            },
-            {
-                "comparison": "Median Workers",
-                "value": f"{total_wealth_dollars / worker_annual / 1e6:.0f} million",
-                "context": "Annual salaries",
-            },
-            {
-                "comparison": "Average US Workers",
-                "value": f"{total_wealth_dollars / lifetime_earnings / 1e6:.0f} million",
-                "context": "Lifetime careers",
-            },
+        metrics = {
+            k: equiv_data.loc[k, "value"] if equiv_data is not None else v
+            for k, v in defaults.items()
+        }
+
+        results = []
+        comparisons = [
+            (
+                "Median US Households",
+                metrics["median_household_income"],
+                "Annual household income",
+            ),
+            ("Median Workers", metrics["median_worker_annual"], "Annual salaries"),
+            (
+                "Average US Workers",
+                metrics["median_lifetime_earnings"],
+                "Lifetime careers",
+            ),
         ]
+
+        for name, divisor, context in comparisons:
+            value = total_dollars / divisor / 1e6
+            results.append(
+                {
+                    "comparison": name,
+                    "value": f"{value:.0f} million",
+                    "context": context,
+                }
+            )
+
+        return results
