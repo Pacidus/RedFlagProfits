@@ -14,9 +14,6 @@ class DataLoader:
 
     def load_latest_data(self):
         """Load the most recent data."""
-        if not self.data_file.exists():
-            raise FileNotFoundError(f"Data file not found: {self.data_file}")
-
         df = pd.read_parquet(self.data_file)
         df["crawl_date"] = pd.to_datetime(df["crawl_date"])
         return df.sort_values("crawl_date")
@@ -88,9 +85,9 @@ class DataLoader:
 
     def _compute_current_metrics(self, latest):
         """Calculate metrics from the latest data point."""
-        wealth_trillions = latest["total_wealth"] / 1_000_000
+        wealth_trillions = latest["total_wealth"] / 1e6
         count = int(latest["billionaire_count"])
-        avg_billions = (wealth_trillions * 1000) / count if count > 0 else 0
+        avg_billions = (wealth_trillions * 1e3) / count if count > 0 else 0
 
         return {
             "total_wealth_trillions": wealth_trillions,
@@ -100,24 +97,14 @@ class DataLoader:
 
     def _compute_historical_metrics(self, first, latest):
         """Calculate historical comparisons between first and latest data points."""
+        fwealth = first["total_wealth"] / 1e6
+        lwealth = latest["total_wealth"] / 1e6
+        fcount = int(first["billionaire_count"])
+        lcount = int(latest["billionaire_count"])
 
-        def to_trillions(x):
-            return x["total_wealth"] / 1_000_000
-
-        first_wealth = to_trillions(first)
-        latest_wealth = to_trillions(latest)
-        first_count = int(first["billionaire_count"])
-        latest_count = int(latest["billionaire_count"])
-
-        def avg_wealth(wealth, count):
-            return (wealth * 1000) / count if count > 0 else 0
-
-        wealth_pct = self._pct_change(latest_wealth, first_wealth)
-        count_diff = latest_count - first_count
-        avg_pct = self._pct_change(
-            avg_wealth(latest_wealth, latest_count),
-            avg_wealth(first_wealth, first_count),
-        )
+        wealth_pct = self._pct_change(lwealth, fwealth)
+        count_diff = lcount - fcount
+        avg_pct = self._pct_change(lwealth / lcount, fwealth / fcount)
 
         return {
             "wealth_increase_pct": wealth_pct,
