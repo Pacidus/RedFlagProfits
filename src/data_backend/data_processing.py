@@ -1,4 +1,4 @@
-"""Data transformation and processing utilities."""
+"""Simplified data transformation and processing utilities."""
 
 import json
 import pandas as pd
@@ -6,10 +6,11 @@ import numpy as np
 import ast
 
 from .config import Config
+from .utils import is_invalid_value, safe_numeric_conversion
 
 
 class DataProcessor:
-    """Handles data transformation and encoding."""
+    """Handles data transformation and encoding with simplified patterns."""
 
     def __init__(self, logger):
         self.logger = logger
@@ -18,248 +19,179 @@ class DataProcessor:
     def _load_dictionaries(self):
         """Load existing mapping dictionaries."""
         dictionaries = {}
-
         for name in Config.DICTIONARY_NAMES:
             dict_path = Config.DICT_DIR / f"{name}.json"
+            dictionaries[name] = {}
             if dict_path.exists():
                 try:
                     with dict_path.open("r") as f:
                         dictionaries[name] = json.load(f)
                 except (json.JSONDecodeError, IOError) as e:
                     self.logger.warning(f"⚠️  Could not load {name} dictionary: {e}")
-                    dictionaries[name] = {}
-            else:
-                dictionaries[name] = {}
-
         return dictionaries
 
     def process_data(self, df):
-        """Main processing pipeline."""
+        """Main processing pipeline with consolidated operations."""
         self.logger.info("🔄 Processing Forbes data...")
-
-        processed_df = df
-        processed_df = self._process_financial_assets(processed_df)
-        processed_df = self._process_industries(processed_df)
-        processed_df = self._process_simple_fields(processed_df)
-        processed_df = self._add_date_components(processed_df)
-
-        self.logger.info("✅ Forbes data processing complete")
-        return processed_df
+        return (
+            df.pipe(self._process_financial_assets)
+            .pipe(self._process_industries_and_fields)
+            .pipe(self._add_date_components)
+        )
 
     def add_inflation_data(self, df, cpi_value, pce_value):
-        """Add inflation columns."""
-        df["cpi_u"] = cpi_value if cpi_value is not None else np.nan
-        df["pce"] = pce_value if pce_value is not None else np.nan
+        """Add inflation columns with status logging."""
+        df["cpi_u"] = cpi_value or np.nan
+        df["pce"] = pce_value or np.nan
 
-        if cpi_value and pce_value:
-            self.logger.info(
-                f"✅ Added inflation data: CPI-U={cpi_value:.1f}, PCE={pce_value:.1f}"
-            )
-        else:
-            self.logger.warning("⚠️  Inflation data unavailable")
-
+        status = "✅" if cpi_value and pce_value else "⚠️"
+        self.logger.info(
+            f"{status} Inflation data: "
+            f"CPI-U={cpi_value or 'Unavailable'}, PCE={pce_value or 'Unavailable'}"
+        )
         return df
 
     def save_dictionaries(self):
         """Save updated dictionaries."""
         self.logger.info("💾 Saving dictionary mappings...")
-
         try:
             Config.DICT_DIR.mkdir(parents=True, exist_ok=True)
             for dict_name, dict_data in self.dictionaries.items():
-                dict_path = Config.DICT_DIR / f"{dict_name}.json"
-                with dict_path.open("w") as f:
+                with (Config.DICT_DIR / f"{dict_name}.json").open("w") as f:
                     json.dump(dict_data, f, indent=2)
-
             self.logger.info("✅ Dictionary mappings saved")
         except IOError as e:
             self.logger.error(f"❌ Failed to save dictionaries: {e}")
 
     def _process_financial_assets(self, df):
-        """Process financial assets - simplified version."""
+        """Process financial assets with consolidated extraction."""
         if "financialAssets" not in df.columns:
             return df
 
         self.logger.info("  📊 Processing financial assets...")
+        assets_series = df["financialAssets"].apply(self._parse_complex_field)
 
-        # Parse assets safely
-        df["financialAssets"] = df["financialAssets"].apply(self._safe_parse_assets)
-
-        # Extract asset columns
-        assets_data = df["financialAssets"].apply(self._extract_asset_columns)
-
-        # Add columns to dataframe
         for col in Config.ASSET_COLUMNS:
-            df[f"asset_{col}"] = assets_data.apply(lambda x: x.get(col, []))
-
+            df[f"asset_{col}"] = assets_series.apply(
+                lambda assets: self._extract_assets(assets, col)
+            )
         return df.drop("financialAssets", axis=1)
 
-    def _safe_parse_assets(self, asset_value):
-        """Safely parse asset field."""
-        try:
-            return self._parse_complex_field(asset_value)
-        except Exception as e:
-            self.logger.debug(f"Asset parsing failed: {e}")
-            return []
+    def _process_industries_and_fields(self, df):
+        """Process industries and simple fields in one pass."""
+        self.logger.info("  🏭 Processing industries and fields...")
 
-    def _extract_asset_columns(self, assets_list):
-        """Extract asset data into columns."""
-        if not isinstance(assets_list, list):
-            return {col: [] for col in Config.ASSET_COLUMNS}
-
-        result = {col: [] for col in Config.ASSET_COLUMNS}
-
-        for asset in assets_list:
-            if not isinstance(asset, dict):
-                continue
-
-            # Encode categorical fields
-            result["exchanges"].append(
-                self._encode_value("exchanges", asset.get("exchange", ""))
+        # Process industries
+        if "industries" in df.columns:
+            df["industry_codes"] = (
+                df["industries"]
+                .apply(self._parse_complex_field)
+                .apply(
+                    lambda x: (
+                        [self._encode_value("industries", i) for i in x]
+                        if isinstance(x, list) and x
+                        else []
+                    )
+                )
             )
-            result["companies"].append(
-                self._encode_value("companies", asset.get("companyName", ""))
-            )
-            result["currencies"].append(
-                self._encode_value("currencies", asset.get("currencyCode", ""))
-            )
-            result["tickers"].append(str(asset.get("ticker", "")))
+            df = df.drop("industries", axis=1)
 
-            # Numeric fields with safe conversion using config
-            for field, key, default in Config.ASSET_FIELD_MAPPINGS:
-                try:
-                    value = float(asset.get(key, default) or default)
-                except (ValueError, TypeError):
-                    value = default
-                result[field].append(value)
-
-        return result
-
-    def _process_industries(self, df):
-        """Process industries field."""
-        if "industries" not in df.columns:
-            return df
-
-        self.logger.info("  🏭 Processing industries...")
-        df["industries"] = df["industries"].apply(self._parse_complex_field)
-        df["industry_codes"] = df["industries"].apply(
-            lambda industries: (
-                [self._encode_value("industries", ind) for ind in industries]
-                if isinstance(industries, list) and industries
-                else []
-            )
-        )
-        return df.drop("industries", axis=1)
-
-    def _process_simple_fields(self, df):
-        """Process simple field transformations."""
-        self.logger.info("  🔤 Processing simple fields...")
-
-        # Convert dates
+        # Process birthDate and gender
         if "birthDate" in df.columns:
-            # Convert to datetime and explicitly handle the dtype
             df["birthDate"] = pd.to_datetime(
                 df["birthDate"], unit="ms", errors="coerce"
             )
 
-        # Encode categorical fields using pattern matching
         if "gender" in df.columns:
-            df["gender"] = df["gender"].apply(self._map_gender)
-
-        if "countryOfCitizenship" in df.columns:
-            df["country_code"] = df["countryOfCitizenship"].apply(
-                lambda x: self._encode_value("countries", x)
+            df["gender"] = df["gender"].apply(
+                lambda x: (
+                    Config.GENDER_MAP.get(str(x).upper(), Config.INVALID_CODE)
+                    if not pd.isna(x)
+                    else Config.INVALID_CODE
+                )
             )
-            df = df.drop("countryOfCitizenship", axis=1)
 
-        if "source" in df.columns:
-            df["source_code"] = df["source"].apply(
-                lambda x: self._encode_value("sources", x)
-            )
-            df = df.drop("source", axis=1)
+        # Process column mappings
+        for old_col, dict_name, new_col in Config.COLUMN_MAPPINGS:
+            if old_col in df.columns:
+                df[new_col] = df[old_col].apply(
+                    lambda x: self._encode_value(dict_name, x)
+                )
+                df = df.drop(old_col, axis=1)
 
         return df
 
-    def _map_gender(self, gender_value):
-        """Map gender using pattern matching."""
-        if pd.isna(gender_value):
-            return Config.INVALID_CODE
+    def _extract_assets(self, assets_list, col):
+        """Extract specific asset column data with simplified logic."""
+        if not isinstance(assets_list, list):
+            return []
 
-        match str(gender_value).upper():
-            case "M":
-                return 0
-            case "F":
-                return 1
-            case _:
-                return Config.INVALID_CODE
+        # Define extraction mappings
+        extraction_map = {
+            "exchanges": ("exchange", True),
+            "companies": ("companyName", True),
+            "currencies": ("currencyCode", True),
+            "tickers": ("ticker", False),
+        }
+
+        if col in extraction_map:
+            key, encode = extraction_map[col]
+            return [
+                (
+                    self._encode_value(col, asset.get(key, ""))
+                    if encode
+                    else str(asset.get(key, ""))
+                )
+                for asset in assets_list
+                if isinstance(asset, dict)
+            ]
+
+        # Handle numeric fields
+        for field, key, default in Config.ASSET_FIELD_MAPPINGS:
+            if field == col:
+                return [
+                    safe_numeric_conversion(asset.get(key, default), default)
+                    for asset in assets_list
+                    if isinstance(asset, dict)
+                ]
+
+        return []
 
     def _add_date_components(self, df):
         """Add date components for efficient filtering."""
-        # Ensure crawl_date is properly converted to datetime
         if "crawl_date" in df.columns:
             df["crawl_date"] = pd.to_datetime(df["crawl_date"], errors="coerce")
-
-            # Handle conversion failures gracefully
-            if df["crawl_date"].isna().all():
-                self.logger.warning(
-                    "⚠️  Could not convert crawl_date to datetime, skipping date components"
-                )
-                # Add default values
-                df["year"] = 2025
-                df["month"] = 1
-                df["day"] = 1
-            else:
+            if not df["crawl_date"].isna().all():
                 df["year"] = df["crawl_date"].dt.year
                 df["month"] = df["crawl_date"].dt.month
                 df["day"] = df["crawl_date"].dt.day
-
         return df
 
     def _encode_value(self, dict_name, value):
-        """Encode value in dictionary."""
-        if self._is_invalid_value(value):
+        """Encode value in dictionary with simplified logic."""
+        if is_invalid_value(value):
             return Config.INVALID_CODE
 
         value_str = str(value)
-        if value_str in {"", "nan", "None"}:
-            return Config.INVALID_CODE
-
-        if value_str not in self.dictionaries[dict_name]:
-            self.dictionaries[dict_name][value_str] = len(self.dictionaries[dict_name])
-
-        return self.dictionaries[dict_name][value_str]
-
-    def _is_invalid_value(self, value):
-        """Check if value is invalid/empty."""
-        if value is None or value == "":
-            return True
-
-        if hasattr(value, "__len__") and len(str(value)) == 0:
-            return True
-
-        try:
-            if pd.isna(value):
-                return True
-        except (ValueError, TypeError):
-            pass
-
-        return False
+        dictionary = self.dictionaries[dict_name]
+        if value_str not in dictionary:
+            dictionary[value_str] = len(dictionary)
+        return dictionary[value_str]
 
     def _parse_complex_field(self, field_value):
-        """Parse complex fields from string format."""
-        if self._is_invalid_value(field_value):
+        """Parse complex fields with consolidated parsing logic."""
+        if is_invalid_value(field_value):
             return []
 
         if isinstance(field_value, list):
             return field_value
 
         if isinstance(field_value, str):
-            for parser in [ast.literal_eval, json.loads]:
+            for parser in (ast.literal_eval, json.loads):
                 try:
                     result = parser(field_value)
                     return result if isinstance(result, list) else [result]
                 except (ValueError, SyntaxError):
                     continue
-            return [field_value]
 
         return [field_value] if field_value else []
