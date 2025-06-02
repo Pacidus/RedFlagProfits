@@ -145,7 +145,7 @@ class RedFlagsSiteGenerator:
                 )
 
         wealth_timeline_data = chart_processor.prepare_wealth_timeline_data(
-            time_series_df, current_cpi, base_cpi
+            time_series_df
         )
 
         # Export chart data to static files for JavaScript

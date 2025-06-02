@@ -7,9 +7,7 @@ Generates the static website from data and templates.
 
 import sys
 import pandas as pd
-import json
 from pathlib import Path
-from datetime import datetime
 
 # Add src to path to import site_generator
 sys.path.insert(0, str(Path(__file__).parent))

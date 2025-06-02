@@ -2,14 +2,13 @@
 
 import pandas as pd
 import numpy as np
-from datetime import datetime
 from pathlib import Path
 
 
 class DataLoader:
     """Loads and processes data for site generation."""
 
-    TRILLION = 1_000_000  # Conversion factor: millions → trillions
+    TRILLION = int(1e6)  # Conversion factor: millions → trillions
 
     def __init__(self, data_file="data/all_billionaires.parquet"):
         self.data_file = Path(data_file)
@@ -77,14 +76,13 @@ class DataLoader:
 
     def _compute_current_metrics(self, latest):
         """Calculate metrics from the latest data point."""
-        wealth_trillions = latest.total_wealth / self.TRILLION
         count = int(latest.billionaire_count)
-        avg_billions = (wealth_trillions * 1000) / count if count else 0
-
+        wealth_trillions = latest.total_wealth / self.TRILLION
+        avg_wealth = (wealth_trillions * 1000) / count if count else 0
         return {
-            "total_wealth_trillions": wealth_trillions,
             "billionaire_count": count,
-            "average_wealth_billions": avg_billions,
+            "total_wealth_trillions": wealth_trillions,
+            "average_wealth_billions": avg_wealth,
         }
 
     def _compute_historical_metrics(self, first, latest):
@@ -94,15 +92,12 @@ class DataLoader:
             return x.total_wealth / self.TRILLION
 
         fwealth, lwealth = to_trillions(first), to_trillions(latest)
-        fcount, lcount = int(first.billionaire_count), int(latest.billionaire_count)
-
-        wealth_pct = self._pct_change(lwealth, fwealth)
-        count_diff = lcount - fcount
-        avg_pct = self._pct_change(lwealth / lcount, fwealth / fcount) if fcount else 0
+        fcnt, lcnt = int(first.billionaire_count), int(latest.billionaire_count)
+        avg_pct = self._pct_change(lwealth / lcnt, fwealth / fcnt) if fcnt * lcnt else 0
 
         return {
-            "wealth_increase_pct": wealth_pct,
-            "billionaire_increase_count": count_diff,
+            "wealth_increase_pct": self._pct_change(lwealth, fwealth),
+            "billionaire_increase_count": lcnt - fcnt,
             "avg_wealth_increase_pct": avg_pct,
         }
 
@@ -112,7 +107,7 @@ class DataLoader:
 
     def _calculate_growth_metrics(self, daily_totals):
         """Calculate growth metrics using stable time series approach."""
-        if len(daily_totals) < 2:
+        if (Ldt := len(daily_totals)) < 2:
             return {
                 "growth_rate": 0.0,
                 "doubling_time": float("inf"),
@@ -120,11 +115,7 @@ class DataLoader:
             }
 
         # Use monthly averages when possible
-        source = (
-            self._get_monthly_averages(daily_totals)
-            if len(daily_totals) > 60
-            else daily_totals
-        )
+        source = self._get_monthly_averages(daily_totals) if Ldt > 60 else daily_totals
         if source is daily_totals:
             print("⚠️ Using daily data for CAGR (insufficient monthly data)")
         else:
@@ -148,9 +139,7 @@ class DataLoader:
         # Calculate additional metrics
         if cagr > 0:
             doubling_time = np.log(2) / np.log(1 + cagr / 100)
-            daily_accumulation = (end_val - start_val) / (
-                1000 * days_diff
-            )  # Billions/day
+            daily_accumulation = (end_val - start_val) / (1e3 * days_diff)  # B/day
         else:
             doubling_time, daily_accumulation = float("inf"), 0.0
 
