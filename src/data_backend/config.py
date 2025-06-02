@@ -8,7 +8,7 @@ from pathlib import Path
 class _Config:
     """Configuration settings."""
 
-    # File paths using pathlib
+    # File paths
     DATA_DIR = Path("data")
     DICT_DIR = Path("data/dictionaries")
     PARQUET_FILE = Path("data/all_billionaires.parquet")
@@ -30,7 +30,6 @@ class _Config:
     # Parquet settings
     COMPRESSION_LEVEL = 22
     DATA_PAGE_SIZE = 1048576
-    DICT_PAGE_SIZE = 1048576
 
     # Data processing
     FORBES_COLUMNS = [
@@ -49,7 +48,6 @@ class _Config:
         "financialAssets",
     ]
 
-    # Asset processing columns
     ASSET_COLUMNS = [
         "exchanges",
         "tickers",
@@ -60,7 +58,6 @@ class _Config:
         "exchange_rates",
     ]
 
-    # Dictionary names for encoding
     DICTIONARY_NAMES = [
         "exchanges",
         "currencies",
@@ -74,13 +71,41 @@ class _Config:
     GENDER_MAP = {"M": 0, "F": 1}
     INFLATION_BUFFER_DAYS = 90
     INVALID_CODE = -1
+    TRILLION = int(1e6)  # Conversion factor: millions → trillions
 
-    # Asset field mappings
+    # Field mappings for data processing
     ASSET_FIELD_MAPPINGS = [
         ("shares", "numberOfShares", 0.0),
         ("prices", "sharePrice", 0.0),
         ("exchange_rates", "exchangeRate", 1.0),
     ]
+
+    COLUMN_MAPPINGS = [
+        ("countryOfCitizenship", "countries", "country_code"),
+        ("source", "sources", "source_code"),
+    ]
+
+    # Chart configuration
+    CHART_COLORS = {
+        "primary": "#e74c3c",
+        "secondary": "#c0392b",
+        "accent": "#ff6b6b",
+        "background": "#1a1a1a",
+        "wealth": ("#404040", "#1a1a1a"),
+        "count": ("#3a3a3a", "#222222"),
+        "average": ("#383838", "#1f1f1f"),
+    }
+
+    # Site generation
+    SITE_NAME = "Red Flags Profits"
+    SITE_DESCRIPTION = "Wealth Monopolization Analysis"
+
+    # Reference values for calculations
+    DEFAULT_METRICS = {
+        "median_household_income": 80610,
+        "median_worker_annual": 59540,
+        "median_lifetime_earnings": 1_420_000,
+    }
 
     # Request headers
     HEADERS = {
