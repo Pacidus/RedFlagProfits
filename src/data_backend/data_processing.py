@@ -96,11 +96,9 @@ class DataProcessor:
             )
             df = df.drop("industries", axis=1)
 
-        # Process birthDate and gender
+        # Process birthDate with safe conversion
         if "birthDate" in df.columns:
-            df["birthDate"] = pd.to_datetime(
-                df["birthDate"], unit="ms", errors="coerce"
-            )
+            df["birthDate"] = self._safe_datetime_conversion(df["birthDate"])
 
         if "gender" in df.columns:
             df["gender"] = df["gender"].apply(
@@ -120,6 +118,36 @@ class DataProcessor:
                 df = df.drop(old_col, axis=1)
 
         return df
+
+    def _safe_datetime_conversion(self, series):
+        """Safely convert birthDate values to datetime, handling overflow."""
+        # Convert to numeric first, coercing errors to NaN
+        numeric_series = pd.to_numeric(series, errors="coerce")
+
+        # Define reasonable bounds for birth dates (in milliseconds since epoch)
+        # 1900-01-01: -2208988800000 ms
+        # Today: calculated dynamically
+        min_timestamp_ms = -2209032000  # ~1900
+        max_timestamp_ms = int(pd.Timestamp.now().timestamp() * 1000)  # Today
+
+        # Filter out values outside reasonable range
+        valid_mask = (
+            numeric_series.notna()
+            & (numeric_series >= min_timestamp_ms)
+            & (numeric_series <= max_timestamp_ms)
+        )
+
+        # Create result series filled with NaT
+        result = pd.Series(pd.NaT, index=series.index)
+
+        # Convert only valid values
+        if valid_mask.any():
+            valid_values = numeric_series[valid_mask]
+            result[valid_mask] = pd.to_datetime(
+                valid_values, unit="ms", errors="coerce"
+            )
+
+        return result
 
     def _extract_assets(self, assets_list, col):
         """Extract specific asset column data with simplified logic."""
