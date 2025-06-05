@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-RedFlagProfits Historical Data Recovery
+RedFlagProfits Historical Data Recovery - Optimized Version
 
 Recovers missing historical data from the Wayback Machine and integrates it
-into the existing dataset using the established data pipeline.
+into the existing dataset using batched saves and optional async processing.
 """
 
 import logging
@@ -14,16 +14,21 @@ from pathlib import Path
 import time
 import json
 from io import StringIO
+import asyncio
+import aiohttp
+from concurrent.futures import ThreadPoolExecutor
+from typing import List, Optional, Tuple
 
 from data_backend import Config, DataProcessor, ParquetManager
 from data_backend.utils import retry_on_network_error
 
 
-class WaybackRecoveryClient:
-    """Handles Wayback Machine data recovery operations."""
+class OptimizedWaybackRecoveryClient:
+    """Handles Wayback Machine data recovery operations with async support."""
 
-    def __init__(self, logger):
+    def __init__(self, logger, batch_size=20):
         self.logger = logger
+        self.batch_size = batch_size
         self.session = requests.Session()
         self.session.headers.update(Config.HEADERS)
 
@@ -130,7 +135,7 @@ class WaybackRecoveryClient:
             f"{self.wayback_base}/{snapshot['timestamp']}id_/{snapshot['original']}"
         )
         try:
-            self.logger.info(
+            self.logger.debug(
                 f"📥 Fetching: {snapshot['date']} ({snapshot['timestamp']})"
             )
 
@@ -145,7 +150,7 @@ class WaybackRecoveryClient:
             clean_data = data[Config.FORBES_COLUMNS].copy()
             clean_data["crawl_date"] = pd.to_datetime(snapshot["date"])
 
-            self.logger.info(
+            self.logger.debug(
                 f"✅ Processed {len(clean_data)} records for {snapshot['date']}"
             )
             return clean_data, snapshot["date"]
@@ -154,15 +159,52 @@ class WaybackRecoveryClient:
             self.logger.error(f"❌ Failed to fetch {snapshot['date']}: {e}")
             return None
 
+    async def fetch_archived_data_async(self, session, snapshot):
+        """Async version of fetch_archived_data for better concurrency."""
+        wayback_url = (
+            f"{self.wayback_base}/{snapshot['timestamp']}id_/{snapshot['original']}"
+        )
+        try:
+            self.logger.debug(
+                f"📥 Fetching async: {snapshot['date']} ({snapshot['timestamp']})"
+            )
 
-class HistoricalDataRecovery:
-    """Main recovery orchestration class."""
+            async with session.get(wayback_url, timeout=30) as response:
+                response.raise_for_status()
+                text = await response.text()
 
-    def __init__(self):
+            # Parse the JSON response
+            raw_data = pd.read_json(StringIO(text))
+            data = pd.json_normalize(raw_data["personList"]["personsLists"])
+
+            # Use the snapshot date as crawl_date
+            clean_data = data[Config.FORBES_COLUMNS].copy()
+            clean_data["crawl_date"] = pd.to_datetime(snapshot["date"])
+
+            self.logger.debug(
+                f"✅ Processed {len(clean_data)} records for {snapshot['date']}"
+            )
+            return clean_data, snapshot["date"]
+
+        except Exception as e:
+            self.logger.error(f"❌ Failed to fetch async {snapshot['date']}: {e}")
+            return None
+
+
+class OptimizedHistoricalDataRecovery:
+    """Main recovery orchestration class with batched saves and async support."""
+
+    def __init__(self, batch_size=20, use_async=False):
         self.logger = self._setup_logging()
-        self.wayback_client = WaybackRecoveryClient(self.logger)
+        self.batch_size = batch_size
+        self.use_async = use_async
+        self.wayback_client = OptimizedWaybackRecoveryClient(self.logger, batch_size)
         self.processor = DataProcessor(self.logger)
         self.file_manager = ParquetManager(self.logger)
+
+        # Batch storage
+        self.pending_data = []
+        self.pending_dates = []
 
     def _setup_logging(self):
         """Setup logging for recovery operations."""
@@ -193,14 +235,102 @@ class HistoricalDataRecovery:
             self.logger.error(f"❌ Failed to read existing data: {e}")
             return set()
 
+    def _save_batch(self, force_save=False):
+        """Save accumulated batch data to dataset."""
+        if not self.pending_data or (
+            len(self.pending_data) < self.batch_size and not force_save
+        ):
+            return True
+
+        self.logger.info(f"💾 Saving batch of {len(self.pending_data)} records...")
+
+        try:
+            # Combine all pending data
+            combined_data = pd.concat(self.pending_data, ignore_index=True)
+
+            # Use a single date string for the batch (could be improved)
+            batch_date_str = f"batch_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+
+            # Process combined data
+            processed_data = self.processor.process_data(combined_data)
+            processed_data = self.processor.add_inflation_data(
+                processed_data, None, None
+            )
+
+            # Save to dataset
+            success = self.file_manager.update_dataset(processed_data, batch_date_str)
+
+            if success:
+                self.logger.info(
+                    f"✅ Successfully saved batch for dates: {', '.join(self.pending_dates)}"
+                )
+                # Clear the batch
+                self.pending_data.clear()
+                self.pending_dates.clear()
+                return True
+            else:
+                self.logger.error(f"❌ Failed to save batch")
+                return False
+
+        except Exception as e:
+            self.logger.error(f"❌ Batch save failed: {e}")
+            return False
+
+    def _process_single_result(self, result):
+        """Process a single fetch result and add to batch."""
+        if result is None:
+            return False
+
+        forbes_data, date_str = result
+
+        # Add to pending batch
+        self.pending_data.append(forbes_data)
+        self.pending_dates.append(date_str)
+
+        self.logger.info(
+            f"📦 Added {date_str} to batch ({len(self.pending_data)}/{self.batch_size})"
+        )
+
+        # Save if batch is full
+        if len(self.pending_data) >= self.batch_size:
+            return self._save_batch()
+
+        return True
+
+    async def _recover_batch_async(self, snapshots_batch):
+        """Process a batch of snapshots asynchronously."""
+        async with aiohttp.ClientSession(
+            headers=Config.HEADERS, timeout=aiohttp.ClientTimeout(total=60)
+        ) as session:
+            tasks = [
+                self.wayback_client.fetch_archived_data_async(session, snapshot)
+                for snapshot in snapshots_batch
+            ]
+
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+
+            successful_results = []
+            for result in results:
+                if isinstance(result, Exception):
+                    self.logger.error(f"❌ Async fetch failed: {result}")
+                elif result is not None:
+                    successful_results.append(result)
+
+            return successful_results
+
     def recover_historical_data(
         self,
         start_date="2020-01-01",
         end_date=None,
         dry_run=False,
     ):
-        """Main recovery process."""
-        self.logger.info("🚀 Starting historical data recovery from Wayback Machine")
+        """Main recovery process with batched saves."""
+        self.logger.info(
+            "🚀 Starting optimized historical data recovery from Wayback Machine"
+        )
+        self.logger.info(
+            f"⚙️  Batch size: {self.batch_size}, Async mode: {self.use_async}"
+        )
 
         # Get existing dates to avoid duplicates
         existing_dates = self.get_existing_dates()
@@ -232,43 +362,59 @@ class HistoricalDataRecovery:
                 self.logger.info(f"  ... and {len(new_snapshots) - 10} more")
             return True
 
-        # Process snapshots in batches
+        if self.use_async:
+            return asyncio.run(self._recover_async(new_snapshots))
+        else:
+            return self._recover_sync(new_snapshots)
+
+    async def _recover_async(self, snapshots):
+        """Async recovery process."""
         successful_recoveries = 0
         failed_recoveries = 0
 
-        for i, snapshot in enumerate(new_snapshots, 1):
+        # Process in smaller concurrent batches to avoid overwhelming servers
+        concurrent_batch_size = 5
+
+        for i in range(0, len(snapshots), concurrent_batch_size):
+            batch = snapshots[i : i + concurrent_batch_size]
             self.logger.info(
-                f"📊 Processing {i}/{len(new_snapshots)}: {snapshot['date']}"
+                f"🔄 Processing async batch {i//concurrent_batch_size + 1}"
             )
+
+            results = await self._recover_batch_async(batch)
+
+            for result in results:
+                if self._process_single_result(result):
+                    successful_recoveries += 1
+                else:
+                    failed_recoveries += 1
+
+            # Brief pause between concurrent batches
+            await asyncio.sleep(1)
+
+        # Save any remaining data
+        self._save_batch(force_save=True)
+
+        # Save updated dictionaries
+        self.processor.save_dictionaries()
+
+        return self._log_summary(successful_recoveries, failed_recoveries)
+
+    def _recover_sync(self, snapshots):
+        """Synchronous recovery process with batched saves."""
+        successful_recoveries = 0
+        failed_recoveries = 0
+
+        for i, snapshot in enumerate(snapshots, 1):
+            self.logger.info(f"📊 Processing {i}/{len(snapshots)}: {snapshot['date']}")
 
             # Fetch archived data
             result = self.wayback_client.fetch_archived_data(snapshot)
-            if result is None:
+
+            if self._process_single_result(result):
+                successful_recoveries += 1
+            else:
                 failed_recoveries += 1
-                continue
-
-            forbes_data, date_str = result
-
-            # Process using existing pipeline
-            try:
-                processed_data = self.processor.process_data(forbes_data)
-                # Add empty inflation data (historical inflation can be added later if needed)
-                processed_data = self.processor.add_inflation_data(
-                    processed_data, None, None
-                )
-
-                # Save to dataset
-                success = self.file_manager.update_dataset(processed_data, date_str)
-                if success:
-                    successful_recoveries += 1
-                    self.logger.info(f"✅ Successfully recovered {date_str}")
-                else:
-                    failed_recoveries += 1
-                    self.logger.error(f"❌ Failed to save {date_str}")
-
-            except Exception as e:
-                failed_recoveries += 1
-                self.logger.error(f"❌ Processing failed for {date_str}: {e}")
 
             # Rate limiting - be nice to Wayback Machine
             if i % 10 == 0:
@@ -277,16 +423,23 @@ class HistoricalDataRecovery:
             else:
                 time.sleep(0.5)
 
+        # Save any remaining data in the final batch
+        self._save_batch(force_save=True)
+
         # Save updated dictionaries
         self.processor.save_dictionaries()
 
-        # Summary
+        return self._log_summary(successful_recoveries, failed_recoveries)
+
+    def _log_summary(self, successful_recoveries, failed_recoveries):
+        """Log recovery summary and return success status."""
         self.logger.info(f"🎉 Recovery completed!")
         self.logger.info(f"✅ Successful recoveries: {successful_recoveries}")
         self.logger.info(f"❌ Failed recoveries: {failed_recoveries}")
-        self.logger.info(
-            f"📊 Success rate: {successful_recoveries/(successful_recoveries+failed_recoveries)*100:.1f}%"
-        )
+        if successful_recoveries + failed_recoveries > 0:
+            self.logger.info(
+                f"📊 Success rate: {successful_recoveries/(successful_recoveries+failed_recoveries)*100:.1f}%"
+            )
 
         return successful_recoveries > 0
 
@@ -296,7 +449,7 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="Recover historical billionaire data from Wayback Machine"
+        description="Recover historical billionaire data from Wayback Machine (Optimized)"
     )
     parser.add_argument(
         "--start-date",
@@ -311,6 +464,18 @@ def main():
         action="store_true",
         help="Show what would be recovered without actually doing it",
     )
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=20,
+        help="Number of records to process before saving (default: 20)",
+    )
+    parser.add_argument(
+        "--async",
+        action="store_true",
+        dest="use_async",
+        help="Use async processing for faster downloads",
+    )
 
     args = parser.parse_args()
 
@@ -318,7 +483,9 @@ def main():
     Config.DATA_DIR.mkdir(parents=True, exist_ok=True)
     Config.DICT_DIR.mkdir(parents=True, exist_ok=True)
 
-    recovery = HistoricalDataRecovery()
+    recovery = OptimizedHistoricalDataRecovery(
+        batch_size=args.batch_size, use_async=args.use_async
+    )
     success = recovery.recover_historical_data(
         start_date=args.start_date, end_date=args.end_date, dry_run=args.dry_run
     )
