@@ -12,6 +12,23 @@ class WealthTimelineChart {
     this.inflationType = "cpi_u";
     this.animationPlayed = false;
     this.isAnimating = false;
+    
+    // Store original dataset configurations to prevent Chart.js from modifying them
+    this.originalDatasetConfigs = null;
+
+    // Debug chart data structure
+    console.log("🔍 Chart data structure:");
+    console.log("   inflationData:", !!chartData.inflationData);
+    console.log("   inflationSummary:", !!chartData.inflationSummary);
+    console.log("   inflationFitParams:", !!chartData.inflationFitParams);
+    
+    if (chartData.inflationSummary) {
+      console.log("   inflationSummary values:", {
+        start: chartData.inflationSummary.startValue,
+        end: chartData.inflationSummary.endValue,
+        increase: chartData.inflationSummary.totalIncrease
+      });
+    }
 
     if (typeof Chart !== "undefined") {
       this.init();
@@ -33,6 +50,9 @@ class WealthTimelineChart {
 
     // Prepare datasets
     const datasets = this.prepareDatasets();
+    
+    // Store original dataset configurations before Chart.js can modify them
+    this.originalDatasetConfigs = datasets.map(dataset => ({...dataset}));
 
     // Chart configuration
     const config = {
@@ -42,6 +62,9 @@ class WealthTimelineChart {
     };
 
     this.chart = new Chart(ctx, config);
+    
+    // Initial call to updateInfo() - this might be overriding our changes later!
+    console.log("🎬 Initial updateInfo() call during chart init");
     this.updateInfo();
   }
 
@@ -146,7 +169,10 @@ class WealthTimelineChart {
             label: (context) => {
               const value = context.parsed.y;
               const label = context.dataset.label;
-              return `${label}: $${value.toFixed(1)} trillion`;
+              const inflationSuffix = this.showInflation && this.chartData.inflationData 
+                ? ` (${this.chartData.inflationData.inflationType} Adjusted)` 
+                : "";
+              return `${label}${inflationSuffix}: $${value.toFixed(1)} trillion`;
             },
           },
         },
@@ -191,6 +217,10 @@ class WealthTimelineChart {
             callback: (value) => {
               return `$${value.toFixed(1)}T`;
             },
+          },
+          // Never show y-axis title - respecting design choice
+          title: {
+            display: false,
           },
         },
       },
@@ -237,7 +267,7 @@ class WealthTimelineChart {
     if (datasets[1]) datasets[1].data = [];
     this.chart.update("none");
 
-    // Animate data points appearing
+    // Animate data points appearing - faster animation
     let pointIndex = 0;
     const pointInterval = setInterval(() => {
       if (pointIndex < originalData.length) {
@@ -254,12 +284,12 @@ class WealthTimelineChart {
           this.isAnimating = false;
         }
       }
-    }, this.chartData.animation?.pointDelay || 10);
+    }, 5); // Reduced from 10 to 5 for faster animation
   }
 
   animateTrendLine(trendDataset, trendData) {
-    const duration = this.chartData.animation?.trendLineSpeed || 1500;
-    const steps = 50;
+    const duration = 800; // Reduced from 1500 to 800 for faster animation
+    const steps = 40; // Reduced from 50 to 40
     const stepDuration = duration / steps;
     let currentStep = 0;
 
@@ -273,20 +303,22 @@ class WealthTimelineChart {
       } else {
         clearInterval(interval);
         this.isAnimating = false;
+        // IMPORTANT: Call updateInfo() after animation completes
+        console.log("🎬 Animation completed, calling updateInfo()");
+        this.updateInfo();
       }
     }, stepDuration);
   }
 
   setupControls() {
-    // Add control buttons after the chart
+    // Add control buttons after the chart - removed replay button
     const chartSection = document.querySelector(".chart-section");
     if (!chartSection) return;
 
     const controlsHtml = `
       <div class="chart-controls">
         <button class="chart-btn active" data-view="nominal">Nominal Values</button>
-        <button class="chart-btn" data-view="inflation">Inflation Adjusted</button>
-        <button class="chart-btn" data-action="replay">Replay Animation</button>
+        <button class="chart-btn" data-view="inflation" ${!this.chartData.inflationData ? 'disabled' : ''}>Inflation Adjusted</button>
       </div>
     `;
 
@@ -296,79 +328,209 @@ class WealthTimelineChart {
     }
 
     // Add event listeners
-    const controls = chartSection.querySelectorAll(".chart-btn");
+    const controls = chartSection.querySelectorAll(".chart-btn[data-view]");
     controls.forEach((btn) => {
       btn.addEventListener("click", (e) => this.handleControlClick(e));
     });
+
+    // Log inflation data availability for debugging
+    console.log("Inflation data available:", !!this.chartData.inflationData);
+    if (this.chartData.inflationData) {
+      console.log("Inflation data type:", this.chartData.inflationData.inflationType);
+      console.log("Inflation data points:", this.chartData.inflationData.data?.length || 0);
+    }
   }
 
   handleControlClick(e) {
     const btn = e.target;
     const view = btn.getAttribute("data-view");
-    const action = btn.getAttribute("data-action");
 
-    if (view) {
+    if (view && !btn.disabled) {
       // Toggle inflation view
-      this.showInflation = view === "inflation";
-      this.updateChartData();
+      const newShowInflation = view === "inflation";
+      
+      console.log(`🔄 Switching from ${this.showInflation ? 'inflation' : 'nominal'} to ${newShowInflation ? 'inflation' : 'nominal'} mode`);
+      
+      // Only update if there's actually a change
+      if (newShowInflation !== this.showInflation) {
+        this.showInflation = newShowInflation;
+        console.log("🔄 About to call updateChartData()");
+        this.updateChartData();
+        
+        // Force update info immediately after chart data update
+        console.log("🔄 About to call updateInfo()");
+        try {
+          this.updateInfo();
+          console.log("✅ updateInfo() completed successfully");
+        } catch (error) {
+          console.error("❌ updateInfo() failed:", error);
+        }
+      }
 
       // Update button states
       document.querySelectorAll(".chart-btn[data-view]").forEach((b) => {
         b.classList.toggle("active", b === btn);
       });
-    } else if (action === "replay") {
-      // Replay animation
-      this.animationPlayed = false;
-      this.animateChart();
     }
   }
 
   updateChartData() {
-    if (!this.chart) return;
+    if (!this.chart || !this.originalDatasetConfigs) return;
 
     let dataToUse = this.chartData.data;
+    let trendToUse = this.chartData.trendLine;
+    let labelSuffix = "";
 
     // Use inflation-adjusted data if available and selected
     if (this.showInflation && this.chartData.inflationData) {
       dataToUse = this.chartData.inflationData.data;
-      this.chart.options.scales.y.title = {
-        display: true,
-        text: `Wealth (Trillions USD, ${this.chartData.inflationData.inflationType} Adjusted)`,
-        color: "#adb5bd",
-      };
+      labelSuffix = ` (${this.chartData.inflationData.inflationType} Adjusted)`;
+      
+      // Use inflation-adjusted trend line if available
+      if (this.chartData.inflationTrendLine) {
+        trendToUse = this.chartData.inflationTrendLine;
+        console.log("Using inflation-adjusted trend line");
+      } else {
+        console.log("Inflation trend line not available, using nominal trend");
+      }
+      
+      console.log("Switching to inflation-adjusted data:", dataToUse.length, "points");
     } else {
-      this.chart.options.scales.y.title = {
-        display: true,
-        text: "Wealth (Trillions USD)",
-        color: "#adb5bd",
-      };
+      console.log("Using nominal data:", dataToUse.length, "points");
     }
 
-    // Update data points
+    // Process new data
     const processedData = dataToUse.map((point) => ({
       x: new Date(point.x),
       y: point.y,
     }));
 
-    this.chart.data.datasets[0].data = processedData;
+    // Process trend line data
+    const processedTrendData = trendToUse ? trendToUse.map((point) => ({
+      x: new Date(point.x),
+      y: point.y,
+    })) : [];
 
-    // Note: Trend line remains the same (nominal) for simplicity
-    // You could calculate a separate inflation-adjusted trend if needed
+    // Completely restore original dataset configurations
+    // This prevents Chart.js internal modifications from persisting
+    this.chart.data.datasets[0] = {
+      ...this.originalDatasetConfigs[0],
+      data: processedData,
+      label: "Total Wealth" + labelSuffix,
+    };
 
-    this.chart.update();
+    // Restore trend line dataset if it exists
+    if (this.originalDatasetConfigs[1] && this.chart.data.datasets[1]) {
+      this.chart.data.datasets[1] = {
+        ...this.originalDatasetConfigs[1],
+        data: processedTrendData,
+        label: "Exponential Trend" + labelSuffix,
+      };
+    }
+
+    // Force chart update with no animation to prevent styling changes
+    this.chart.update('none');
+    console.log("✅ Chart data updated successfully");
   }
 
   updateInfo() {
-    const infoArea = document.querySelector(".chart-info");
-    if (infoArea && this.chartData.summary) {
-      const summary = this.chartData.summary;
-      infoArea.innerHTML = `
-        <strong>${summary.dataPoints} data points</strong> from ${summary.timespan}<br>
-        Growth: $${summary.startValue.toFixed(1)}T → $${summary.endValue.toFixed(1)}T 
-        (+${summary.totalIncrease.toFixed(1)}%)<br>
-        <span style="color: var(--red-light)">Exponential growth rate: ${summary.exponentialGrowthRate.toFixed(1)}% per year</span>
+    // UNIQUE SIGNATURE TO ENSURE WE'RE IN THE RIGHT FUNCTION
+    console.log("🔥🔥🔥 ENTERING UPDATED updateInfo() METHOD 🔥🔥🔥");
+    
+    const timestamp = new Date().getTime();
+    console.log(`🔍 updateInfo() ENTRY [${timestamp}] - showInflation:`, this.showInflation);
+    
+    // Check all required properties exist
+    console.log("📋 Property check:");
+    console.log("  this.chartData exists:", !!this.chartData);
+    console.log("  this.chartData.summary exists:", !!this.chartData?.summary);
+    console.log("  this.chartData.inflationSummary exists:", !!this.chartData?.inflationSummary);
+    console.log("  this.showInflation:", this.showInflation);
+    
+    try {
+      const infoArea = document.querySelector(".chart-info");
+      if (!infoArea) {
+        console.error("❌ .chart-info element not found");
+        return;
+      }
+      
+      if (!this.chartData || !this.chartData.summary) {
+        console.error("❌ chartData or summary not available");
+        console.log("chartData:", this.chartData);
+        return;
+      }
+      
+      console.log(`✅ Basic checks passed [${timestamp}], proceeding with update`);
+      
+      let summary = this.chartData.summary;
+      let inflationNote = "";
+      let growthRate = this.chartData.fitParams?.annualGrowthRate || 0;
+      let rSquared = this.chartData.fitParams?.r_squared || 0;
+      
+      console.log(`📊 Starting with nominal summary: $${summary.startValue?.toFixed(1)}T → $${summary.endValue?.toFixed(1)}T (+${summary.totalIncrease?.toFixed(1)}%)`);
+      
+      // Use inflation-adjusted metrics if available and selected
+      if (this.showInflation) {
+        console.log(`🎯 showInflation is TRUE, checking for inflation data...`);
+        console.log("  inflationData exists:", !!this.chartData.inflationData);
+        console.log("  inflationSummary exists:", !!this.chartData.inflationSummary);
+        
+        if (this.chartData.inflationData && this.chartData.inflationSummary) {
+          console.log(`🔥 SWITCHING TO INFLATION MODE! 🔥`);
+          
+          const inflationData = this.chartData.inflationData;
+          inflationNote = ` (${inflationData.inflationType} adjusted to ${inflationData.baseDate || 'latest'} dollars)`;
+          
+          // Switch to inflation summary
+          const originalSummary = summary;
+          summary = this.chartData.inflationSummary;
+          
+          console.log(`📊 CRITICAL SUMMARY SWITCH:`);
+          console.log("  ORIGINAL:", `$${originalSummary.startValue?.toFixed(1)}T → $${originalSummary.endValue?.toFixed(1)}T (+${originalSummary.totalIncrease?.toFixed(1)}%)`);
+          console.log("  INFLATION:", `$${summary.startValue?.toFixed(1)}T → $${summary.endValue?.toFixed(1)}T (+${summary.totalIncrease?.toFixed(1)}%)`);
+          
+          // Use inflation growth rate if available
+          if (this.chartData.inflationFitParams) {
+            const oldGrowthRate = growthRate;
+            growthRate = this.chartData.inflationFitParams.annualGrowthRate;
+            rSquared = this.chartData.inflationFitParams.r_squared;
+            console.log(`📈 Growth rate change: ${oldGrowthRate?.toFixed(1)}% → ${growthRate?.toFixed(1)}%`);
+          }
+        } else {
+          console.log(`❌ showInflation=true but missing data:`, {
+            inflationData: !!this.chartData.inflationData,
+            inflationSummary: !!this.chartData.inflationSummary
+          });
+        }
+      } else {
+        console.log(`📊 NOMINAL MODE (showInflation=false)`);
+      }
+      
+      const newHTML = `
+        <strong>${summary.dataPoints || 'N/A'} data points</strong> from ${summary.timespan || 'N/A'}<br>
+        Growth${inflationNote}: $${summary.startValue?.toFixed(1) || 'N/A'}T → $${summary.endValue?.toFixed(1) || 'N/A'}T 
+        (+${summary.totalIncrease?.toFixed(1) || 'N/A'}%)<br>
+        <span style="color: var(--red-light)">Exponential growth rate: ${growthRate?.toFixed(1) || 'N/A'}% per year (R² = ${rSquared?.toFixed(3) || 'N/A'})</span>
+        ${this.showInflation ? '<br><span style="color: var(--text-muted); font-size: 0.875rem;">Growth rate calculated using inflation-adjusted values</span>' : ''}
       `;
+      
+      console.log(`📝 Setting HTML [${timestamp}]:`);
+      console.log("📝 New HTML snippet:", newHTML.substring(0, 150) + "...");
+      
+      infoArea.innerHTML = newHTML;
+      
+      // Immediate verification
+      const immediateCheck = infoArea.innerHTML;
+      console.log(`🔍 Immediate verification: content updated =`, immediateCheck.includes(summary.startValue?.toFixed(1) || 'XXX'));
+      
+      console.log(`✅ updateInfo() completed successfully [${timestamp}]`);
+      
+    } catch (error) {
+      console.error("❌ updateInfo() CRITICAL ERROR:", error);
+      console.error("Stack:", error.stack);
     }
+    
+    console.log("🔥🔥🔥 EXITING UPDATED updateInfo() METHOD 🔥🔥🔥");
   }
 
   destroy() {

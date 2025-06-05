@@ -1,4 +1,4 @@
-"""Simplified data loading utilities for site generation."""
+"""Simplified data loading utilities for site generation with inflation data preservation."""
 
 import pandas as pd
 import numpy as np
@@ -33,6 +33,9 @@ class DataLoader:
         )
         print(f"📊 Collection points: {data_points} days with data")
 
+        # Check inflation data availability in daily totals
+        inflation_available = self._check_inflation_data(daily_totals)
+
         # Compute all metrics
         latest, first = daily_totals.iloc[-1], daily_totals.iloc[0]
         metrics = self._compute_all_metrics(first, latest, daily_totals)
@@ -57,17 +60,82 @@ class DataLoader:
         }
 
     def _compute_daily_totals(self, df):
-        """Group data by date and calculate daily totals."""
-        return (
+        """Group data by date and calculate daily totals WITH inflation data preserved."""
+        print("🔄 Computing daily totals with inflation data preservation...")
+
+        # Check what inflation columns are available in the source data
+        inflation_cols = [col for col in ["cpi_u", "pce"] if col in df.columns]
+
+        if inflation_cols:
+            print(f"📊 Found inflation columns: {inflation_cols}")
+
+            # Check data quality for each inflation column
+            for col in inflation_cols:
+                non_null_count = df[col].notna().sum()
+                total_count = len(df)
+                print(f"   {col}: {non_null_count}/{total_count} non-null values")
+        else:
+            print("⚠️  No inflation columns found in source data")
+
+        # Build aggregation using pandas named aggregation syntax
+        agg_kwargs = {
+            "total_wealth": ("finalWorth", "sum"),
+            "billionaire_count": ("personName", "nunique"),
+        }
+
+        # Add inflation columns to aggregation (take first value per day since they should be the same)
+        for col in inflation_cols:
+            agg_kwargs[col] = (col, "first")
+
+        daily_totals = (
             df.groupby("crawl_date")
-            .agg(
-                total_wealth=("finalWorth", "sum"),
-                billionaire_count=("personName", "nunique"),
-            )
+            .agg(**agg_kwargs)
             .reset_index()
             .rename(columns={"crawl_date": "date"})
             .sort_values("date")
         )
+
+        print(f"✅ Daily totals computed with columns: {list(daily_totals.columns)}")
+
+        # Verify inflation data is preserved
+        for col in inflation_cols:
+            if col in daily_totals.columns:
+                non_null_count = daily_totals[col].notna().sum()
+                total_days = len(daily_totals)
+                print(
+                    f"   {col} in daily totals: {non_null_count}/{total_days} days with data"
+                )
+
+                if non_null_count > 0:
+                    sample_value = daily_totals[daily_totals[col].notna()][col].iloc[0]
+                    print(f"     Sample value: {sample_value}")
+
+        return daily_totals
+
+    def _check_inflation_data(self, daily_totals):
+        """Check and report inflation data availability in daily totals."""
+        inflation_cols = ["cpi_u", "pce"]
+        available_cols = [col for col in inflation_cols if col in daily_totals.columns]
+
+        if not available_cols:
+            print("❌ No inflation columns in daily totals")
+            return False
+
+        inflation_available = False
+        for col in available_cols:
+            non_null_count = daily_totals[col].notna().sum()
+            if non_null_count > 0:
+                inflation_available = True
+                print(f"✅ {col.upper()} data available: {non_null_count} days")
+            else:
+                print(f"⚠️  {col.upper()} column exists but all values are null")
+
+        if inflation_available:
+            print("✅ Inflation data successfully preserved for chart generation")
+        else:
+            print("❌ No usable inflation data found in daily totals")
+
+        return inflation_available
 
     def _compute_all_metrics(self, first, latest, daily_totals):
         """Compute all metrics in one consolidated function."""
@@ -145,17 +213,32 @@ class DataLoader:
     def _get_monthly_averages(self, daily_totals):
         """Compute monthly averages for stable growth calculations."""
         try:
-            return (
+            # Preserve inflation columns in monthly averages
+            inflation_cols = [
+                col for col in ["cpi_u", "pce"] if col in daily_totals.columns
+            ]
+
+            agg_kwargs = {
+                "total_wealth": ("total_wealth", "mean"),
+                "billionaire_count": ("billionaire_count", "mean"),
+                "date": ("date", "first"),
+            }
+
+            # Add inflation columns (take first value per month)
+            for col in inflation_cols:
+                agg_kwargs[col] = (col, "first")
+
+            monthly_averages = (
                 daily_totals.assign(period=lambda x: x.date.dt.to_period("M"))
                 .groupby("period")
-                .agg(
-                    total_wealth=("total_wealth", "mean"),
-                    billionaire_count=("billionaire_count", "mean"),
-                    date=("date", "first"),
-                )
+                .agg(**agg_kwargs)
                 .sort_values("date")
                 .reset_index()
             )
+
+            print(f"✅ Monthly averages computed with inflation data preserved")
+            return monthly_averages
+
         except Exception as e:
             print(f"⚠️ Monthly averaging failed: {e}")
             return daily_totals
