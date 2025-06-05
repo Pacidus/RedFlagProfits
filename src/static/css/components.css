@@ -1,4 +1,241 @@
-/* Growth Statistics */
+/* ===== BASE COMPONENT CLASSES ===== */
+.card-base {
+  background-color: var(--bg-secondary);
+  padding: var(--space-lg);
+  border-radius: var(--border-radius);
+  border: 1px solid var(--bg-tertiary);
+}
+
+.card-base h4 {
+  color: var(--red-primary);
+  margin-bottom: var(--space-sm);
+}
+
+/* ===== VALUE DISPLAY COMPONENTS ===== */
+.value-large {
+  font-family: var(--font-mono);
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--red-primary);
+  display: block;
+  margin-bottom: var(--space-sm);
+  line-height: 1;
+}
+
+.value-medium {
+  font-family: var(--font-mono);
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--red-primary);
+  display: block;
+  margin-bottom: var(--space-xs);
+}
+
+.value-small {
+  font-family: var(--font-mono);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--red-primary);
+  margin-bottom: var(--space-sm);
+}
+
+.label-base {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 500;
+}
+
+/* ===== CHART COMPONENTS ===== */
+.chart-btn {
+  padding: var(--space-sm) var(--space-lg);
+  background-color: var(--bg-tertiary);
+  color: var(--text-secondary);
+  border: 1px solid var(--bg-tertiary);
+  border-radius: var(--border-radius);
+  font-family: var(--font-primary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.chart-btn:hover {
+  background-color: var(--red-dark);
+  border-color: var(--red-primary);
+  color: var(--text-primary);
+  transform: translateY(-1px);
+}
+
+.chart-btn.active {
+  background-color: var(--red-primary);
+  border-color: var(--red-primary);
+  color: var(--text-primary);
+  box-shadow: 0 2px 8px rgba(231, 76, 60, 0.3);
+}
+
+.chart-btn[data-action="replay"] {
+  background-color: var(--bg-secondary);
+  border-color: var(--red-primary);
+  color: var(--red-light);
+}
+
+.chart-btn[data-action="replay"]:hover {
+  background-color: var(--red-primary);
+  color: var(--text-primary);
+}
+
+.chart-section {
+  background-color: var(--bg-secondary);
+  padding: var(--space-xl);
+  border-radius: var(--border-radius);
+  border: 1px solid var(--bg-tertiary);
+  margin: var(--space-xl) 0;
+}
+
+.chart-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: var(--space-lg);
+  color: var(--text-primary);
+}
+
+.chart-container {
+  height: 400px;
+  position: relative;
+  background-color: var(--bg-primary);
+  border-radius: var(--border-radius);
+  border: 1px solid var(--bg-tertiary);
+  transition: border-color 0.3s ease;
+  padding: var(--space-xs);
+}
+
+.chart-container:hover {
+  border-color: var(--red-dark);
+}
+
+.chart-controls {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-sm);
+  margin-top: var(--space-lg);
+  flex-wrap: wrap;
+}
+
+.chart-info {
+  text-align: center;
+  margin-top: var(--space-md);
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.chart-info strong {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+/* ===== METRIC CARDS ===== */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-lg);
+  margin: var(--space-lg) 0;
+  margin-bottom: var(--space-xxl);
+}
+
+.metric-card {
+  background-color: var(--bg-secondary);
+  padding: var(--space-xl);
+  border-radius: var(--border-radius);
+  border: 1px solid var(--bg-tertiary);
+  text-align: center;
+  transition: var(--transition);
+  position: relative;
+  overflow: hidden;
+}
+
+.metric-card:hover {
+  border-color: var(--red-primary);
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(231, 76, 60, 0.1);
+}
+
+/* Subtle red accent styling */
+.metric-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--red-primary);
+  transition: var(--transition);
+}
+
+.metric-card:hover::before {
+  width: 3px;
+  background: var(--red-light);
+}
+
+.metric-card > * {
+  position: relative;
+  z-index: 2;
+}
+
+/* Sparklines as full background */
+.metric-card.has-sparkline {
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+/* Light overlay for text readability */
+.metric-card.has-sparkline::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(45, 45, 45, 0.15);
+  z-index: 1;
+}
+
+.metric-card.has-sparkline:hover::after {
+  background: rgba(45, 45, 45, 0.1);
+}
+
+.metric-value {
+  font-family: var(--font-mono);
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--red-primary);
+  display: block;
+  margin-bottom: var(--space-sm);
+  line-height: 1;
+}
+
+.metric-label {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 500;
+  margin-bottom: var(--space-xs);
+}
+
+.metric-change {
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  color: var(--red-light);
+  font-weight: 500;
+}
+
+/* ===== GROWTH STATS ===== */
 .growth-stats {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -15,11 +252,11 @@
 }
 
 .growth-value {
-  display: block;
   font-family: var(--font-mono);
   font-size: 2rem;
   font-weight: 700;
   color: var(--red-primary);
+  display: block;
   margin-bottom: var(--space-xs);
 }
 
@@ -28,17 +265,10 @@
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  font-weight: 500;
 }
 
-/* Data Range Display */
-.data-range {
-  font-family: var(--font-mono);
-  font-size: 0.875rem;
-  color: var(--text-muted);
-  margin-top: var(--space-xs);
-}
-
-/* Methodology & Data Sections */
+/* ===== DATA SOURCES & CARDS ===== */
 .data-sources {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -122,11 +352,11 @@
 }
 
 .stat-value {
-  display: block;
   font-family: var(--font-mono);
   font-size: 1.5rem;
   font-weight: 700;
   color: var(--red-primary);
+  display: block;
   margin-bottom: var(--space-xs);
 }
 
@@ -135,9 +365,17 @@
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  font-weight: 500;
 }
 
-/* Header Component */
+.data-range {
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  margin-top: var(--space-xs);
+}
+
+/* ===== HEADER COMPONENT ===== */
 .header {
   background-color: var(--bg-secondary);
   border-bottom: 1px solid var(--bg-tertiary);
@@ -218,7 +456,7 @@
   transition: var(--transition);
 }
 
-/* Footer Component */
+/* ===== FOOTER COMPONENT ===== */
 .footer {
   background-color: var(--bg-secondary);
   padding: var(--space-xxl) 0 var(--space-xl);
@@ -256,7 +494,7 @@
   font-size: 0.875rem;
 }
 
-/* Hero Section */
+/* ===== HERO SECTION ===== */
 .hero {
   background: linear-gradient(
     135deg,
@@ -278,174 +516,7 @@
   font-weight: 400;
 }
 
-/* Metrics Grid */
-.metrics-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: var(--space-lg);
-  margin-bottom: var(--space-xxl);
-}
-
-/* CONSISTENT METRIC CARD STYLING */
-.metric-card {
-  background-color: var(--bg-secondary);
-  padding: var(--space-xl);
-  border-radius: var(--border-radius);
-  border: 1px solid var(--bg-tertiary);
-  text-align: center;
-  transition: var(--transition);
-  position: relative;
-  overflow: hidden;
-}
-
-.metric-card:hover {
-  border-color: var(--red-primary);
-  transform: translateY(-2px);
-}
-
-.metric-card::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, var(--red-primary), var(--red-light));
-  opacity: 0;
-  transition: var(--transition);
-}
-
-.metric-card:hover::before {
-  opacity: 1;
-}
-
-.metric-value {
-  font-family: var(--font-mono);
-  font-size: 2.5rem;
-  font-weight: 700;
-  color: var(--red-primary); /* Consistent color for ALL cards */
-  display: block;
-  margin-bottom: var(--space-sm);
-  line-height: 1;
-  position: relative;
-  z-index: 2;
-}
-
-.metric-label {
-  font-size: 0.875rem;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: var(--space-xs);
-  font-weight: 500;
-  position: relative;
-  z-index: 2;
-}
-
-.metric-change {
-  font-family: var(--font-mono);
-  font-size: 0.875rem;
-  color: var(--red-light);
-  font-weight: 500;
-  position: relative;
-  z-index: 2;
-}
-
-/* Background sparkline styling */
-.metric-card.has-sparkline {
-  background-size: cover;
-  background-repeat: no-repeat;
-  background-position: center;
-}
-
-/* Ensure content stays above background */
-.metric-card > * {
-  position: relative;
-  z-index: 2;
-}
-
-/* Light overlay for text readability on sparkline cards */
-.metric-card.has-sparkline::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(45, 45, 45, 0.25);
-  z-index: 1;
-}
-
-/* Enhanced hover effect for sparkline cards */
-.metric-card.has-sparkline:hover::after {
-  background: rgba(45, 45, 45, 0.2);
-}
-
-/* Consistent left border for ALL cards */
-.metric-card.wealth-card,
-.metric-card.count-card,
-.metric-card.average-card,
-.metric-card.growth-card {
-  border-left: 3px solid var(--red-primary);
-}
-
-/* Chart Section */
-.chart-section {
-  background-color: var(--bg-secondary);
-  padding: var(--space-xl);
-  border-radius: var(--border-radius);
-  border: 1px solid var(--bg-tertiary);
-  margin: var(--space-xl) 0;
-}
-
-.chart-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  margin-bottom: var(--space-lg);
-  color: var(--text-primary);
-}
-
-.chart-container {
-  height: 400px;
-  position: relative;
-  background-color: var(--bg-primary);
-  border-radius: var(--border-radius);
-  border: 1px solid var(--bg-tertiary);
-}
-
-.chart-controls {
-  display: flex;
-  justify-content: center;
-  gap: var(--space-sm);
-  margin-top: var(--space-lg);
-}
-
-.chart-btn {
-  padding: var(--space-sm) var(--space-lg);
-  background-color: var(--bg-tertiary);
-  color: var(--text-secondary);
-  border: 1px solid var(--bg-tertiary);
-  border-radius: var(--border-radius);
-  font-family: var(--font-primary);
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: var(--transition);
-}
-
-.chart-btn:hover {
-  background-color: var(--red-dark);
-  border-color: var(--red-primary);
-  color: var(--text-primary);
-}
-
-.chart-btn.active {
-  background-color: var(--red-primary);
-  border-color: var(--red-primary);
-  color: var(--text-primary);
-}
-
-/* Analysis Components */
+/* ===== ANALYSIS COMPONENTS ===== */
 .analysis-hero {
   background: linear-gradient(
     135deg,
@@ -489,15 +560,33 @@
   color: var(--text-muted);
 }
 
-/* Preview Section */
 .preview-section {
   background-color: var(--bg-secondary);
   border-top: 1px solid var(--bg-tertiary);
   border-bottom: 1px solid var(--bg-tertiary);
 }
 
-/* Responsive Design */
+/* ===== RESPONSIVE DESIGN ===== */
 @media (max-width: 768px) {
+  .hero {
+    padding: var(--space-xl) 0;
+  }
+
+  .hero-title {
+    margin-bottom: var(--space-xl);
+    padding: 0 var(--space-sm);
+  }
+
+  .hero-title h1 {
+    font-size: 1.75rem;
+    line-height: 1.2;
+    margin-bottom: var(--space-md);
+  }
+
+  .hero-subtitle {
+    font-size: 1rem;
+  }
+
   .header-content {
     flex-direction: column;
     gap: var(--space-md);
@@ -519,7 +608,6 @@
   .nav.active {
     display: flex;
   }
-
   .nav-toggle {
     display: flex;
   }
@@ -527,25 +615,79 @@
   .nav-toggle.active span:nth-child(1) {
     transform: rotate(45deg) translate(5px, 5px);
   }
-
   .nav-toggle.active span:nth-child(2) {
     opacity: 0;
   }
-
   .nav-toggle.active span:nth-child(3) {
     transform: rotate(-45deg) translate(7px, -6px);
   }
 
-  .metrics-grid {
+  .metrics-grid,
+  .data-sources,
+  .calculation-grid,
+  .transparency-grid,
+  .growth-stats,
+  .equivalency-grid {
     grid-template-columns: 1fr;
+    gap: var(--space-md);
+  }
+
+  .metric-card {
+    padding: var(--space-lg);
+    min-height: 120px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
   }
 
   .metric-value {
     font-size: 2rem;
   }
+  .metric-label,
+  .metric-change {
+    font-size: 0.8125rem;
+  }
+
+  .chart-container {
+    height: 450px;
+    width: 100%;
+    margin: 0 auto;
+  }
+
+  .chart-section {
+    padding: var(--space-lg);
+    margin: var(--space-lg) 0;
+    width: 100%;
+    overflow-x: hidden;
+  }
+
+  .chart-title {
+    font-size: 1.125rem;
+    margin-bottom: var(--space-md);
+    text-align: center;
+  }
+
+  .chart-info {
+    margin-top: var(--space-sm);
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    padding: var(--space-sm);
+    background-color: var(--bg-tertiary);
+    border-radius: var(--border-radius);
+  }
 
   .chart-controls {
-    flex-wrap: wrap;
+    gap: var(--space-xs);
+    margin-top: var(--space-sm);
+    padding: 0 var(--space-sm);
+  }
+
+  .chart-btn {
+    padding: var(--space-sm) var(--space-md);
+    font-size: 0.8125rem;
+    min-height: 44px;
+    flex: 1;
+    max-width: 150px;
   }
 
   .footer-content {
@@ -555,303 +697,6 @@
 
   .dataset-stats {
     flex-direction: column;
-    gap: var(--space-md);
-  }
-
-  .data-sources,
-  .calculation-grid,
-  .transparency-grid,
-  .growth-stats {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* Enhanced Chart Controls */
-.chart-controls {
-  display: flex;
-  justify-content: center;
-  gap: var(--space-sm);
-  margin-top: var(--space-lg);
-  flex-wrap: wrap;
-}
-
-.chart-btn {
-  padding: var(--space-sm) var(--space-lg);
-  background-color: var(--bg-tertiary);
-  color: var(--text-secondary);
-  border: 1px solid var(--bg-tertiary);
-  border-radius: var(--border-radius);
-  font-family: var(--font-primary);
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
-}
-
-.chart-btn:hover {
-  background-color: var(--red-dark);
-  border-color: var(--red-primary);
-  color: var(--text-primary);
-  transform: translateY(-1px);
-}
-
-.chart-btn.active {
-  background-color: var(--red-primary);
-  border-color: var(--red-primary);
-  color: var(--text-primary);
-  box-shadow: 0 2px 8px rgba(231, 76, 60, 0.3);
-}
-
-.chart-btn[data-action="replay"] {
-  background-color: var(--bg-secondary);
-  border-color: var(--red-primary);
-  color: var(--red-light);
-}
-
-.chart-btn[data-action="replay"]:hover {
-  background-color: var(--red-primary);
-  color: var(--text-primary);
-}
-
-/* Chart info enhanced styling */
-.chart-info {
-  text-align: center;
-  margin-top: var(--space-md);
-  font-size: 0.875rem;
-  color: var(--text-muted);
-  line-height: 1.6;
-}
-
-.chart-info strong {
-  color: var(--text-secondary);
-  font-weight: 600;
-}
-
-/* Chart container animation ready state */
-.chart-container {
-  height: 400px;
-  position: relative;
-  background-color: var(--bg-primary);
-  border-radius: var(--border-radius);
-  border: 1px solid var(--bg-tertiary);
-  transition: border-color 0.3s ease;
-}
-
-.chart-container:hover {
-  border-color: var(--red-dark);
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  .chart-controls {
-    gap: var(--space-xs);
-  }
-
-  .chart-btn {
-    padding: var(--space-xs) var(--space-md);
-    font-size: 0.8125rem;
-  }
-
-  .chart-container {
-    height: 300px;
-  }
-}
-
-/* Improved chart container for mobile */
-.chart-container {
-  height: 400px;
-  position: relative;
-  background-color: var(--bg-primary);
-  border-radius: var(--border-radius);
-  border: 1px solid var(--bg-tertiary);
-  transition: border-color 0.3s ease;
-  /* Add padding for mobile touch targets */
-  padding: var(--space-xs);
-}
-
-/* Mobile-specific improvements */
-@media (max-width: 768px) {
-  .chart-container {
-    /* Increase height significantly for mobile */
-    height: 450px;
-    /* Reduce padding to maximize chart space */
-    padding: var(--space-xs);
-    /* Ensure full width usage */
-    width: 100%;
-    margin: 0 auto;
-  }
-
-  /* Make chart section more mobile-friendly */
-  .chart-section {
-    background-color: var(--bg-secondary);
-    padding: var(--space-lg); /* Reduce from xl to lg */
-    border-radius: var(--border-radius);
-    border: 1px solid var(--bg-tertiary);
-    margin: var(--space-lg) 0; /* Reduce from xl to lg */
-    /* Remove any horizontal constraints */
-    width: 100%;
-    overflow-x: hidden;
-  }
-
-  /* Improve chart title spacing */
-  .chart-title {
-    font-size: 1.125rem; /* Slightly smaller on mobile */
-    font-weight: 600;
-    margin-bottom: var(--space-md); /* Reduce spacing */
-    color: var(--text-primary);
-    text-align: center;
-  }
-
-  /* Chart info styling for mobile */
-  .chart-info {
-    text-align: center;
-    margin-top: var(--space-sm); /* Reduce spacing */
-    font-size: 0.8125rem; /* Slightly smaller text */
-    color: var(--text-muted);
-    line-height: 1.5;
-    padding: var(--space-sm);
-    background-color: var(--bg-tertiary);
-    border-radius: var(--border-radius);
-  }
-
-  /* Improve button layout for mobile */
-  .chart-controls {
-    display: flex;
-    justify-content: center;
-    gap: var(--space-xs);
-    margin-top: var(--space-sm);
-    flex-wrap: wrap;
-    padding: 0 var(--space-sm);
-  }
-
-  .chart-btn {
-    padding: var(--space-sm) var(--space-md);
-    font-size: 0.8125rem;
-    min-height: 44px; /* Ensure good touch target */
-    flex: 1;
-    max-width: 150px;
-  }
-}
-
-/* Extra small screens (phones in portrait) */
-@media (max-width: 480px) {
-  .chart-container {
-    height: 400px; /* Maintain good height even on small screens */
-    padding: 2px; /* Minimal padding for maximum chart space */
-  }
-
-  .chart-section {
-    padding: var(--space-md);
-    margin: var(--space-md) 0;
-  }
-
-  .chart-info {
-    font-size: 0.75rem;
-    line-height: 1.4;
-  }
-
-  .chart-btn {
-    font-size: 0.75rem;
-    padding: var(--space-xs) var(--space-sm);
-    min-width: 120px;
-  }
-}
-
-@media (max-width: 768px) {
-  .container {
-    padding: 0 var(--space-md);
-    max-width: 100%;
-  }
-
-  /* Hero section mobile optimization */
-  .hero {
-    padding: var(--space-xl) 0;
-  }
-
-  .hero-title {
-    text-align: center;
-    margin-bottom: var(--space-xl);
-    padding: 0 var(--space-sm);
-  }
-
-  .hero-title h1 {
-    font-size: 1.75rem;
-    line-height: 1.2;
-    margin-bottom: var(--space-md);
-  }
-
-  .hero-subtitle {
-    font-size: 1rem;
-    margin-bottom: var(--space-sm);
-  }
-
-  /* Metrics grid mobile optimization */
-  .metrics-grid {
-    grid-template-columns: 1fr;
-    gap: var(--space-md);
-    margin-bottom: var(--space-xl);
-  }
-
-  /* Enhanced metric card mobile styling */
-  .metric-card {
-    padding: var(--space-lg);
-    text-align: center;
-    min-height: 120px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-  }
-
-  .metric-value {
-    font-size: 2rem; /* Slightly smaller than desktop */
-    line-height: 1;
-    margin-bottom: var(--space-sm);
-  }
-
-  .metric-label {
-    font-size: 0.8125rem;
-    margin-bottom: var(--space-xs);
-    line-height: 1.3;
-  }
-
-  .metric-change {
-    font-size: 0.8125rem;
-    line-height: 1.3;
-  }
-
-  /* Section spacing adjustments */
-  .section {
-    padding: var(--space-xl) 0;
-  }
-
-  /* Article content mobile optimization */
-  .article {
-    max-width: 100%;
-    padding: 0;
-  }
-
-  .article h2 {
-    font-size: 1.5rem;
-    margin-top: var(--space-xl);
-    padding-bottom: var(--space-xs);
-  }
-
-  .article h3 {
-    font-size: 1.25rem;
-    margin-bottom: var(--space-sm);
-  }
-
-  .article p {
-    font-size: 1rem;
-    line-height: 1.6;
-    margin-bottom: var(--space-md);
-  }
-
-  /* Growth stats mobile layout */
-  .growth-stats {
-    grid-template-columns: 1fr;
     gap: var(--space-md);
     padding: var(--space-lg);
   }
@@ -863,126 +708,81 @@
     border: 1px solid var(--bg-tertiary);
   }
 
-  /* Data sources mobile layout */
-  .data-sources,
-  .calculation-grid,
-  .transparency-grid {
-    grid-template-columns: 1fr;
-    gap: var(--space-md);
-  }
-
-  /* Dataset stats mobile layout */
-  .dataset-stats {
-    flex-direction: column;
-    gap: var(--space-md);
-    padding: var(--space-lg);
-  }
-
-  /* Equivalency grid mobile layout */
-  .equivalency-grid {
-    grid-template-columns: 1fr;
-    gap: var(--space-md);
-  }
-
   .equivalency-card {
     padding: var(--space-md);
   }
-
   .equiv-value {
     font-size: 1.25rem;
-    margin-bottom: var(--space-sm);
   }
 }
 
-/* Extra small mobile devices */
 @media (max-width: 480px) {
-  .container {
-    padding: 0 var(--space-sm);
-  }
-
   .hero-title h1 {
     font-size: 1.5rem;
   }
-
   .metric-card {
     padding: var(--space-md);
     min-height: 100px;
   }
-
   .metric-value {
     font-size: 1.75rem;
   }
-
+  .chart-container {
+    height: 400px;
+    padding: 2px;
+  }
   .chart-section {
     padding: var(--space-md);
     margin: var(--space-md) 0;
   }
-
   .chart-title {
     font-size: 1rem;
     margin-bottom: var(--space-sm);
   }
-
-  /* Improve touch targets */
   .chart-btn {
     min-height: 44px;
     font-size: 0.75rem;
     padding: var(--space-sm);
+    min-width: 120px;
   }
-
-  /* Text adjustments for small screens */
-  .article p,
-  .lead {
-    font-size: 0.9375rem;
-    line-height: 1.5;
-  }
-
-  code {
-    font-size: 0.8125rem;
-    padding: var(--space-xs);
+  .chart-info {
+    font-size: 0.75rem;
+    line-height: 1.4;
   }
 }
 
-/* Landscape mobile optimization */
 @media (max-width: 768px) and (orientation: landscape) {
   .chart-container {
-    height: 350px; /* Slightly smaller for landscape */
+    height: 350px;
   }
-
   .hero {
     padding: var(--space-lg) 0;
   }
-
   .metrics-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: var(--space-sm);
   }
-
   .metric-card {
     padding: var(--space-md);
     min-height: 90px;
   }
-
   .metric-value {
     font-size: 1.5rem;
   }
 }
 
-/* Fix for iOS Safari viewport issues */
+/* iOS Safari fixes */
 @supports (-webkit-touch-callout: none) {
   .chart-container {
-    /* iOS Safari fix for viewport units */
     height: 400px;
     min-height: 400px;
   }
-
   @media (max-width: 768px) {
     .chart-container {
       height: 450px;
       min-height: 450px;
     }
   }
-
   @media (max-width: 480px) {
     .chart-container {
       height: 400px;

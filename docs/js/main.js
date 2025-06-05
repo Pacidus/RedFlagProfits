@@ -1,10 +1,5 @@
-/**
- * Main JavaScript file for Red Flags Profits
- * Basic functionality and navigation
- */
-
+// main.js
 document.addEventListener("DOMContentLoaded", function () {
-  // Mobile navigation toggle
   const navToggle = document.querySelector(".nav-toggle");
   const nav = document.querySelector(".nav");
 
@@ -15,43 +10,29 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  // Smooth scrolling for navigation links
   const navLinks = document.querySelectorAll('.nav-link[href^="#"]');
-
   navLinks.forEach((link) => {
     link.addEventListener("click", function (e) {
       e.preventDefault();
-
       const targetId = this.getAttribute("href").substring(1);
       const targetElement = document.getElementById(targetId);
 
       if (targetElement) {
-        targetElement.scrollIntoView({
-          behavior: "smooth",
-        });
+        targetElement.scrollIntoView({ behavior: "smooth" });
       }
 
-      // Close mobile nav if open
-      if (nav) {
-        nav.classList.remove("active");
-      }
-      if (navToggle) {
-        navToggle.classList.remove("active");
-      }
+      if (nav) nav.classList.remove("active");
+      if (navToggle) navToggle.classList.remove("active");
     });
   });
 
-  // Add active class to navigation based on scroll position
   const sections = document.querySelectorAll("section[id]");
   const navLinksAll = document.querySelectorAll(".nav-link");
 
   window.addEventListener("scroll", function () {
     let current = "";
-
     sections.forEach((section) => {
       const sectionTop = section.offsetTop;
-      const sectionHeight = section.clientHeight;
-
       if (window.pageYOffset >= sectionTop - 200) {
         current = section.getAttribute("id");
       }
@@ -64,6 +45,4 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     });
   });
-
-  console.log("📊 Red Flags Profits main.js loaded");
 });
