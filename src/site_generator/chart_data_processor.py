@@ -41,6 +41,7 @@ class ChartDataProcessor:
     def _calculate_exponential_fit(self, df):
         """Calculate exponential fit parameters using log-log regression."""
         valid_data = df[df["total_wealth"] > 0]
+        valid_data = valid_data[valid_data["date"] > pd.Timestamp(2022, 10, 14)]
         if len(valid_data) < 2:
             return {"a": 1, "b": 0, "r_squared": 0, "annualGrowthRate": 0}
 
