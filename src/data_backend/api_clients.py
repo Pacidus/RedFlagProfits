@@ -116,10 +116,31 @@ class FredClient:
             )
             return None
 
-        df = pd.DataFrame(data["observations"])
+        # Defensive check: ensure observations exist and have data
+        observations = data.get("observations", [])
+        if not observations:
+            self.logger.warning(
+                f"⚠️  No observations returned for {series_id} between {start_date} and {end_date}"
+            )
+            return None
+
+        df = pd.DataFrame(observations)
+
+        # Defensive check: ensure required columns exist
+        if "date" not in df.columns or "value" not in df.columns:
+            self.logger.warning(
+                f"⚠️  Missing required columns in {series_id} response. "
+                f"Available columns: {list(df.columns)}"
+            )
+            return None
+
         df["date"] = pd.to_datetime(df["date"], errors="coerce")
         df["value"] = pd.to_numeric(df["value"], errors="coerce")
         df = df.dropna(subset=["date", "value"])
+
+        if df.empty:
+            self.logger.warning(f"⚠️  No valid data after parsing for {series_id}")
+            return None
 
         self.logger.info(f"✅ Fetched {len(df)} {series_id} observations")
         return df[["date", "value"]]

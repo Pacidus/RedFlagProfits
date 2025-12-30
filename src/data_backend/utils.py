@@ -6,30 +6,46 @@ from functools import wraps
 from .config import Config
 
 
-def retry_on_network_error(logger, operation_name="operation"):
-    """Decorator for handling network retries with exponential backoff."""
+def retry_on_network_error(logger=None, operation_name="operation"):
+    """Decorator for handling network retries with exponential backoff.
+
+    If logger is None, will attempt to get logger from the instance (args[0].logger).
+    """
 
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
+            # Try to get logger from instance if not provided
+            actual_logger = logger
+            if actual_logger is None and args and hasattr(args[0], "logger"):
+                actual_logger = args[0].logger
+
             for attempt in range(Config.MAX_RETRIES):
                 try:
                     return func(*args, **kwargs)
                 except (requests.ConnectionError, requests.Timeout) as e:
-                    logger.warning(
-                        f"⚠️  {operation_name} network error "
-                        f"(attempt {attempt + 1}/{Config.MAX_RETRIES}): {e}"
-                    )
+                    if actual_logger:
+                        actual_logger.warning(
+                            f"⚠️  {operation_name} network error "
+                            f"(attempt {attempt + 1}/{Config.MAX_RETRIES}): {e}"
+                        )
                     if attempt < Config.MAX_RETRIES - 1:
                         time.sleep(Config.RETRY_DELAY * (attempt + 1))
                         continue
-                    logger.error(f"❌ {operation_name} failed after all retries")
+                    if actual_logger:
+                        actual_logger.error(
+                            f"❌ {operation_name} failed after all retries"
+                        )
                     return None
                 except requests.HTTPError as e:
-                    logger.error(f"❌ {operation_name} HTTP error: {e}")
+                    if actual_logger:
+                        actual_logger.error(f"❌ {operation_name} HTTP error: {e}")
                     return None
                 except (KeyError, ValueError) as e:
-                    logger.error(f"❌ {operation_name} data parsing error: {e}")
+                    if actual_logger:
+                        actual_logger.error(
+                            f"❌ {operation_name} data parsing error: {e}"
+                        )
                     return None
             return None
 
